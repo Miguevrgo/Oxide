@@ -1,0 +1,13 @@
+[package]
+name = "chess"
+version = "1.0.0"
+edition = "2021"
+authors = ["Miguevrgo"]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+debug-assertions = false
+codegen-units = 1
+lto = true
