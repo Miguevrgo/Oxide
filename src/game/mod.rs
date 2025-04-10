@@ -5,7 +5,6 @@ pub mod constants;
 pub mod moves;
 pub mod perft;
 pub mod piece;
-pub mod position;
 pub mod square;
 pub mod tt;
 pub mod uci;

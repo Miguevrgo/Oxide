@@ -1,11 +1,11 @@
 use crate::engine::search::find_best_move;
-use std::env;
 use std::io::BufRead;
+use std::{env, time::Instant};
 
 use super::{
     board::Board,
     moves::{Move, MoveKind},
-    position::Position,
+    perft::BULK,
     square::Square,
 };
 
@@ -14,16 +14,15 @@ const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct UCIEngine {
-    position: Position,
+    board: Board,
+    pub stack: Vec<u64>,
 }
 
 impl UCIEngine {
     pub fn new() -> Self {
         UCIEngine {
-            position: Position {
-                board: Board::default(),
-                history: Vec::new(),
-            },
+            board: Board::default(),
+            stack: Vec::new(),
         }
     }
 
@@ -53,10 +52,8 @@ impl UCIEngine {
                 println!("uciok");
             }
             "ucinewgame" => {
-                self.position = Position {
-                    board: Board::default(),
-                    history: Vec::new(),
-                };
+                self.board = Board::default();
+                self.stack.clear();
             }
             "isready" => {
                 println!("readyok");
@@ -64,6 +61,7 @@ impl UCIEngine {
             "position" => {
                 self.parse_position(&parts[1..]);
             }
+            "perft" => self.run_perft(&parts[1..]),
             "go" => {
                 self.go(&parts[1..]);
             }
@@ -96,8 +94,8 @@ impl UCIEngine {
             }
         }
 
-        self.position.board = board;
-        self.position.history.clear();
+        self.board = board;
+        self.stack.clear();
     }
 
     fn go(&mut self, args: &[&str]) {
@@ -108,7 +106,7 @@ impl UCIEngine {
             }
         }
 
-        let best_move = find_best_move(&self.position.board, depth);
+        let best_move = find_best_move(&self.board, depth);
         println!("bestmove {}", best_move);
     }
 
@@ -137,6 +135,31 @@ impl UCIEngine {
             }
         }
         Move::default() // Fallback
+    }
+
+    fn run_perft(&mut self, args: &[&str]) {
+        let depth = if args.is_empty() {
+            6
+        } else {
+            args[0].parse().unwrap_or(6)
+        };
+
+        let start = Instant::now();
+        let total_nodes = self.board.perft::<BULK>(depth);
+        let total_duration = start.elapsed();
+
+        let nodes_per_sec = if total_duration.as_micros() > 0 {
+            (total_nodes as f64 / total_duration.as_micros() as f64) * 1_000_000.0
+        } else {
+            0.0
+        };
+
+        println!(
+            "info string Total: {} nodes in {:.3}s - {:.2} Mnps",
+            total_nodes,
+            total_duration.as_secs_f64(),
+            nodes_per_sec / 1_000_000.0
+        );
     }
 }
 
