@@ -50,7 +50,7 @@ pub fn find_best_move(board: &Board, mut depth: usize) -> Move {
     }
 
     if board.side == Colour::White {
-        results.into_iter().max_by_key(|&(eval, _)| eval)
+        results.into_iter().min_by_key(|&(eval, _)| eval)
     } else {
         results.into_iter().min_by_key(|&(eval, _)| eval)
     }

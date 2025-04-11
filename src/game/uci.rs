@@ -83,7 +83,7 @@ impl UCIEngine {
             let fen = args[1..fen_end].join(" ");
             Board::from_fen(&fen)
         } else {
-            return; // Comando inválido
+            return;
         };
 
         let moves_start = args.iter().position(|&x| x == "moves");

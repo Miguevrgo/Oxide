@@ -138,7 +138,7 @@ impl Board {
 
         println!("\nMoves per level:");
         for (i, &count) in total_level_counts.iter().enumerate() {
-            println!("Depth {}: {} moves", i, count);
+            println!("Depth {}: {} moves", i + 1, count);
         }
 
         let nodes_per_sec = if total_duration.as_micros() > 0 {
