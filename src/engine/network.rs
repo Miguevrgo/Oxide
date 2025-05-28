@@ -1,7 +1,3 @@
-use crate::game::{
-    piece::{Colour, Piece},
-    square::Square,
-};
 use std::arch::x86_64::*;
 
 // Square: 0-63
@@ -136,8 +132,10 @@ impl Default for EvalTable {
     }
 }
 
-pub fn screlu(x: i16) -> i32 {
-    i32::from(x.clamp(0, QA as i16)).pow(2)
+#[inline(always)]
+pub fn screlu(x: i16) -> i16 {
+    let y = x.max(0) as i32;
+    ((y * y).min(i16::MAX as i32)) as i16
 }
 
 pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {

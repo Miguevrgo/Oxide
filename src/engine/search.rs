@@ -1,27 +1,35 @@
 use super::evaluation::evaluate;
 use crate::engine::evaluation::PIECE_VALUES;
 use crate::game::moves::MoveKind;
-use crate::game::{board::Board, moves::Move, piece::Colour};
+use crate::game::{board::Board, moves::Move};
 use std::sync::mpsc;
 use std::thread;
+use std::time::Instant;
 
 const INF: i32 = 16384;
 const MATE: i32 = 16300;
 
 pub fn find_best_move(board: &Board, mut depth: usize) -> Move {
+    let start = Instant::now();
     let mut moves = board.generate_legal_moves();
     if moves.is_empty() {
         return Move::default();
     }
 
     if board.occupied() <= 18 {
-        depth = 7;
+        depth += 1;
         if board.occupied() <= 12 {
-            depth = 8;
+            depth += 2;
         }
     }
 
-    moves.sort_by_key(|m| std::cmp::Reverse(move_score(m, board)));
+    moves.sort_unstable_by_key(|m| {
+        std::cmp::Reverse({
+            let mut board_new = *board;
+            board_new.make_move(*m);
+            evaluate(&board_new)
+        })
+    });
 
     let (tx, rx) = mpsc::channel();
     let mut handles = vec![];
@@ -29,44 +37,39 @@ pub fn find_best_move(board: &Board, mut depth: usize) -> Move {
     for m in moves {
         let board_clone = *board;
         let tx_clone = tx.clone();
-        let colour = board.side;
 
         let handle = thread::spawn(move || {
             let mut new_board = board_clone;
             new_board.make_move(m);
-            let eval = negamax(&mut new_board, depth - 1, -INF, INF, !colour);
+            let eval = -negamax(&new_board, depth - 1, -INF, INF);
             tx_clone.send((eval, m)).unwrap();
         });
         handles.push(handle);
     }
 
-    let mut results = vec![];
-    for _ in 0..handles.len() {
-        results.push(rx.recv().unwrap());
-    }
-
+    let mut results = Vec::with_capacity(handles.len());
     for handle in handles {
+        results.push(rx.recv().unwrap());
         handle.join().unwrap();
     }
 
-    if board.side == Colour::White {
-        results.into_iter().min_by_key(|&(eval, _)| eval)
-    } else {
-        results.into_iter().min_by_key(|&(eval, _)| eval)
-    }
-    .map(|(_, mv)| mv)
-    .unwrap_or(Move::default())
+    println!("Elapsed: {}", start.elapsed().as_micros());
+    results
+        .into_iter()
+        .max_by_key(|&(eval, _)| eval)
+        .map(|(_, mv)| mv)
+        .unwrap_or(Move::default())
 }
 
-fn negamax(board: &mut Board, depth: usize, mut alpha: i32, beta: i32, turn: Colour) -> i32 {
+fn negamax(board: &Board, depth: usize, mut alpha: i32, beta: i32) -> i32 {
     if depth == 0 {
         return evaluate(board);
     }
 
     let mut moves = board.generate_legal_moves();
     if moves.is_empty() {
-        let king_square = board.king_square(turn);
-        return if board.is_attacked_by(king_square, !turn) {
+        let king_square = board.king_square(board.side);
+        return if board.is_attacked_by(king_square, !board.side) {
             -MATE - depth as i32
         } else {
             0 // Draw
@@ -79,15 +82,10 @@ fn negamax(board: &mut Board, depth: usize, mut alpha: i32, beta: i32, turn: Col
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
-        let score = -negamax(&mut new_board, depth - 1, -beta, -alpha, !turn);
+        let score = -negamax(&new_board, depth - 1, -beta, -alpha);
 
-        if score > max_score {
-            max_score = score;
-        }
-
-        if score > alpha {
-            alpha = score;
-        }
+        max_score = std::cmp::max(score, max_score);
+        alpha = std::cmp::max(alpha, score);
 
         if alpha >= beta {
             break; // Beta cutoff
