@@ -106,38 +106,6 @@ impl Default for Accumulator {
     }
 }
 
-pub struct EvalEntry {
-    pub bbs: [u64; 8],
-    pub white: Accumulator,
-    pub black: Accumulator,
-}
-
-pub struct EvalTable {
-    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
-}
-
-impl Default for EvalTable {
-    fn default() -> Self {
-        let mut table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]> =
-            unsafe { boxed_and_zeroed() };
-
-        for row in table.iter_mut() {
-            for entry in row.iter_mut() {
-                entry.white = Accumulator::default();
-                entry.black = Accumulator::default();
-            }
-        }
-
-        Self { table }
-    }
-}
-
-#[inline(always)]
-pub fn screlu(x: i16) -> i16 {
-    let y = x.max(0) as i32;
-    ((y * y).min(i16::MAX as i32)) as i16
-}
-
 pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const CHUNK: usize = 16;
 
@@ -172,13 +140,4 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
     _mm_cvtsi128_si32(sum_32)
-}
-
-pub unsafe fn boxed_and_zeroed<T>() -> Box<T> {
-    let layout = std::alloc::Layout::new::<T>();
-    let ptr = std::alloc::alloc_zeroed(layout);
-    if ptr.is_null() {
-        std::alloc::handle_alloc_error(layout);
-    }
-    Box::from_raw(ptr.cast())
 }

@@ -2,25 +2,17 @@ use super::evaluation::evaluate;
 use crate::engine::evaluation::PIECE_VALUES;
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
-use std::sync::mpsc;
-use std::thread;
 use std::time::Instant;
 
-const INF: i32 = 16384;
-const MATE: i32 = 16300;
+const INF: i32 = 2 << 16;
+const MATE: i32 = INF << 2;
+const MAX_DEPTH: usize = 16;
 
-pub fn find_best_move(board: &Board, mut depth: usize) -> Move {
+pub fn find_best_move(board: &Board, depth: usize) -> Move {
     let start = Instant::now();
     let mut moves = board.generate_legal_moves();
     if moves.is_empty() {
         return Move::default();
-    }
-
-    if board.occupied() <= 18 {
-        depth += 1;
-        if board.occupied() <= 12 {
-            depth += 2;
-        }
     }
 
     moves.sort_unstable_by_key(|m| {
@@ -31,34 +23,22 @@ pub fn find_best_move(board: &Board, mut depth: usize) -> Move {
         })
     });
 
-    let (tx, rx) = mpsc::channel();
-    let mut handles = vec![];
+    let mut best_move = Move::default();
+    let mut best_eval = -INF;
 
     for m in moves {
-        let board_clone = *board;
-        let tx_clone = tx.clone();
+        let mut new_board = *board;
+        new_board.make_move(m);
+        let eval = -negamax(&new_board, depth - 1, -INF, INF);
 
-        let handle = thread::spawn(move || {
-            let mut new_board = board_clone;
-            new_board.make_move(m);
-            let eval = -negamax(&new_board, depth - 1, -INF, INF);
-            tx_clone.send((eval, m)).unwrap();
-        });
-        handles.push(handle);
+        if eval > best_eval {
+            best_move = m;
+            best_eval = eval;
+        }
     }
 
-    let mut results = Vec::with_capacity(handles.len());
-    for handle in handles {
-        results.push(rx.recv().unwrap());
-        handle.join().unwrap();
-    }
-
-    println!("Elapsed: {}", start.elapsed().as_micros());
-    results
-        .into_iter()
-        .max_by_key(|&(eval, _)| eval)
-        .map(|(_, mv)| mv)
-        .unwrap_or(Move::default())
+    println!("Depth: {depth} Time: {}µs", start.elapsed().as_micros());
+    best_move
 }
 
 fn negamax(board: &Board, depth: usize, mut alpha: i32, beta: i32) -> i32 {
