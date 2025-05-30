@@ -6,9 +6,11 @@ use crate::game::board::Board;
 use crate::game::moves::Move;
 
 pub const BULK: bool = true;
+#[allow(unused)]
 pub const NO_BULK: bool = false;
 pub const NUM_THREADS: usize = 16;
 
+#[allow(unused)]
 pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
     if depth == 0 {
         return 1;
@@ -74,6 +76,7 @@ impl Board {
 
         let moves_per_thread = moves.len().div_ceil(NUM_THREADS);
 
+        #[allow(clippy::type_complexity)]
         let (tx, rx): (
             Sender<(Move, u64, Vec<u64>)>,
             Receiver<(Move, u64, Vec<u64>)>,
