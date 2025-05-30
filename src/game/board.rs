@@ -65,11 +65,6 @@ impl Board {
         self.hash.hash_piece(piece, square);
     }
 
-    pub fn occupied(&self) -> usize {
-        (self.sides[Colour::White as usize] | self.sides[Colour::Black as usize]).count_bits()
-            as usize
-    }
-
     pub fn make_move(&mut self, m: Move) {
         let (src, dest) = (m.get_source(), m.get_dest());
         let src_piece = self.piece_at(src).expect("Invalid source piece");
@@ -389,6 +384,8 @@ impl Board {
         false
     }
 
+    // TODO: Use it in search later
+    #[allow(unused)]
     pub fn is_draw(&self) -> bool {
         if self.halfmoves >= 100 {
             return true;

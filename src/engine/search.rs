@@ -1,4 +1,5 @@
 use super::evaluation::evaluate;
+use super::tt::{Bound, TTEntry, TranspositionTable};
 use crate::engine::evaluation::PIECE_VALUES;
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
@@ -23,13 +24,15 @@ pub fn find_best_move(board: &Board, depth: usize) -> Move {
         })
     });
 
+    let mut tt = TranspositionTable::new();
+
     let mut best_move = Move::default();
     let mut best_eval = -INF;
 
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
-        let eval = -negamax(&new_board, depth - 1, -INF, INF);
+        let eval = -negamax(&new_board, depth - 1, -INF, INF, &mut tt);
 
         if eval > best_eval {
             best_move = m;
@@ -41,9 +44,37 @@ pub fn find_best_move(board: &Board, depth: usize) -> Move {
     best_move
 }
 
-fn negamax(board: &Board, depth: usize, mut alpha: i32, beta: i32) -> i32 {
+fn negamax(
+    board: &Board,
+    depth: usize,
+    mut alpha: i32,
+    beta: i32,
+    tt: &mut TranspositionTable,
+) -> i32 {
+    let key = board.hash.0;
+
+    if let Some(entry) = tt.get(key) {
+        if entry.depth >= depth {
+            match entry.bound {
+                Bound::Exact => return entry.value,
+                Bound::LowerBound if entry.value >= beta => return entry.value,
+                Bound::UpperBound if entry.value <= alpha => return entry.value,
+                _ => {}
+            }
+        }
+    }
+
     if depth == 0 {
-        return evaluate(board);
+        let eval = evaluate(board);
+        tt.insert(
+            key,
+            TTEntry {
+                depth,
+                value: eval,
+                bound: Bound::Exact,
+            },
+        );
+        return eval;
     }
 
     let mut moves = board.generate_legal_moves();
@@ -58,11 +89,12 @@ fn negamax(board: &Board, depth: usize, mut alpha: i32, beta: i32) -> i32 {
 
     moves.sort_by_key(|m| std::cmp::Reverse(move_score(m, board)));
 
+    let old_alpha = alpha;
     let mut max_score = -INF;
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
-        let score = -negamax(&new_board, depth - 1, -beta, -alpha);
+        let score = -negamax(&new_board, depth - 1, -beta, -alpha, tt);
 
         max_score = std::cmp::max(score, max_score);
         alpha = std::cmp::max(alpha, score);
@@ -71,6 +103,23 @@ fn negamax(board: &Board, depth: usize, mut alpha: i32, beta: i32) -> i32 {
             break; // Beta cutoff
         }
     }
+
+    let bound = if max_score <= old_alpha {
+        Bound::UpperBound
+    } else if max_score >= beta {
+        Bound::LowerBound
+    } else {
+        Bound::Exact
+    };
+
+    tt.insert(
+        key,
+        TTEntry {
+            depth,
+            value: max_score,
+            bound,
+        },
+    );
 
     max_score
 }
