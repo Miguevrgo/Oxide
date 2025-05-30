@@ -7,11 +7,12 @@ use std::time::Instant;
 
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF << 2;
-const MAX_DEPTH: usize = 6;
+const MAX_DEPTH: usize = 16;
 
 pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
+    let mut best_eval = -INF;
     let start = Instant::now();
     let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
 
@@ -22,7 +23,13 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             return Move::default();
         }
 
-        moves.sort_unstable_by_key(|m| {
+        if let Some(entry) = tt.get(board.hash.0) {
+            if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
+                moves.swap(0, i);
+            }
+        }
+
+        moves[1..].sort_unstable_by_key(|m| {
             std::cmp::Reverse({
                 let mut b = *board;
                 b.make_move(*m);
@@ -30,26 +37,43 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             })
         });
 
-        if depth > 1 {
-            if let Some(i) = moves.iter().position(|&m| m == best_move) {
-                moves.swap(0, i);
-            }
-        }
+        let mut local_best_eval = -INF;
+        let mut local_best_move = Move::default();
 
-        let mut best_eval = -INF;
-
-        for m in moves {
+        for &m in &moves {
             let mut new_board = *board;
             new_board.make_move(m);
-            let eval = -negamax(&new_board, depth - 1, -INF, INF, &mut tt);
 
-            if eval > best_eval {
-                best_eval = eval;
-                best_move = m;
+            let delta = 50;
+            let mut alpha = best_eval - delta;
+            let mut beta = best_eval + delta;
+            let mut eval;
+
+            loop {
+                eval = -negamax(&new_board, depth - 1, -beta, -alpha, &mut tt);
+
+                if eval <= alpha {
+                    alpha -= delta;
+                } else if eval >= beta {
+                    beta += delta;
+                } else {
+                    break;
+                }
+            }
+
+            if eval > local_best_eval {
+                local_best_eval = eval;
+                local_best_move = m;
             }
         }
 
-        println!("Depth: {depth} Time: {}µs", start.elapsed().as_micros());
+        best_eval = local_best_eval;
+        best_move = local_best_move;
+
+        println!(
+            "Depth: {depth} Eval: {best_eval} Time: {}µs",
+            start.elapsed().as_micros()
+        );
     }
 
     best_move
