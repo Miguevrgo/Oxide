@@ -7,40 +7,51 @@ use std::time::Instant;
 
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF << 2;
-const MAX_DEPTH: usize = 16;
+const MAX_DEPTH: usize = 6;
 
-pub fn find_best_move(board: &Board, depth: usize) -> Move {
-    let start = Instant::now();
-    let mut moves = board.generate_legal_moves();
-    if moves.is_empty() {
-        return Move::default();
-    }
-
-    moves.sort_unstable_by_key(|m| {
-        std::cmp::Reverse({
-            let mut board_new = *board;
-            board_new.make_move(*m);
-            evaluate(&board_new)
-        })
-    });
-
-    let mut tt = TranspositionTable::new();
-
+pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let mut best_move = Move::default();
-    let mut best_eval = -INF;
+    let mut tt = TranspositionTable::new();
+    let start = Instant::now();
+    let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
 
-    for m in moves {
-        let mut new_board = *board;
-        new_board.make_move(m);
-        let eval = -negamax(&new_board, depth - 1, -INF, INF, &mut tt);
+    for depth in 1..=final_depth {
+        let mut moves = board.generate_legal_moves();
 
-        if eval > best_eval {
-            best_move = m;
-            best_eval = eval;
+        if moves.is_empty() {
+            return Move::default();
         }
+
+        moves.sort_unstable_by_key(|m| {
+            std::cmp::Reverse({
+                let mut b = *board;
+                b.make_move(*m);
+                evaluate(&b)
+            })
+        });
+
+        if depth > 1 {
+            if let Some(i) = moves.iter().position(|&m| m == best_move) {
+                moves.swap(0, i);
+            }
+        }
+
+        let mut best_eval = -INF;
+
+        for m in moves {
+            let mut new_board = *board;
+            new_board.make_move(m);
+            let eval = -negamax(&new_board, depth - 1, -INF, INF, &mut tt);
+
+            if eval > best_eval {
+                best_eval = eval;
+                best_move = m;
+            }
+        }
+
+        println!("Depth: {depth} Time: {}µs", start.elapsed().as_micros());
     }
 
-    println!("Depth: {depth} Time: {}µs", start.elapsed().as_micros());
     best_move
 }
 
@@ -52,13 +63,14 @@ fn negamax(
     tt: &mut TranspositionTable,
 ) -> i32 {
     let key = board.hash.0;
+    let tt_move = tt.get(key).map(|entry| entry.best_move);
 
     if let Some(entry) = tt.get(key) {
         if entry.depth >= depth {
             match entry.bound {
                 Bound::Exact => return entry.value,
-                Bound::LowerBound if entry.value >= beta => return entry.value,
-                Bound::UpperBound if entry.value <= alpha => return entry.value,
+                Bound::Lower if entry.value >= beta => return entry.value,
+                Bound::Upper if entry.value <= alpha => return entry.value,
                 _ => {}
             }
         }
@@ -72,6 +84,7 @@ fn negamax(
                 depth,
                 value: eval,
                 bound: Bound::Exact,
+                best_move: Move::default(),
             },
         );
         return eval;
@@ -88,7 +101,13 @@ fn negamax(
     }
 
     moves.sort_by_key(|m| std::cmp::Reverse(move_score(m, board)));
+    if let Some(m) = tt_move {
+        if let Some(i) = moves.iter().position(|&x| x == m) {
+            moves.swap(0, i);
+        }
+    }
 
+    let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
     let mut max_score = -INF;
     for m in moves {
@@ -96,7 +115,10 @@ fn negamax(
         new_board.make_move(m);
         let score = -negamax(&new_board, depth - 1, -beta, -alpha, tt);
 
-        max_score = std::cmp::max(score, max_score);
+        if score > max_score {
+            max_score = score;
+            best_move = Some(m);
+        }
         alpha = std::cmp::max(alpha, score);
 
         if alpha >= beta {
@@ -105,9 +127,9 @@ fn negamax(
     }
 
     let bound = if max_score <= old_alpha {
-        Bound::UpperBound
+        Bound::Upper
     } else if max_score >= beta {
-        Bound::LowerBound
+        Bound::Lower
     } else {
         Bound::Exact
     };
@@ -118,6 +140,7 @@ fn negamax(
             depth,
             value: max_score,
             bound,
+            best_move: best_move.unwrap_or_default(),
         },
     );
 

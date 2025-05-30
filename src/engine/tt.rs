@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
+use crate::game::moves::Move;
+
 #[derive(Copy, Clone)]
 pub enum Bound {
     Exact,
-    LowerBound,
-    UpperBound,
+    Lower,
+    Upper,
 }
 
 #[derive(Copy, Clone)]
@@ -12,6 +14,7 @@ pub struct TTEntry {
     pub depth: usize,
     pub value: i32,
     pub bound: Bound,
+    pub best_move: Move,
 }
 
 pub struct TranspositionTable {
@@ -33,3 +36,4 @@ impl TranspositionTable {
         self.tt.insert(key, entry);
     }
 }
+
