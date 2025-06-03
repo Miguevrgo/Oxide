@@ -1,5 +1,5 @@
 use super::{
-    constants::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS},
+    constants::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES},
     moves::MoveKind,
     square::Square,
     zobrist::ZHash,
@@ -434,6 +434,17 @@ impl Board {
     pub fn king_square(&self, colour: Colour) -> Square {
         let king_bb = self.pieces[Piece::WK.index()] & self.sides[colour as usize];
         king_bb.lsb()
+    }
+
+    pub fn scale(&self, eval: i32) -> i32 {
+        let mat = (700
+            + self.pieces[Piece::WN.index()].count_bits() as i32 * PIECE_VALUES[Piece::WN.index()]
+            + self.pieces[Piece::WB.index()].count_bits() as i32 * PIECE_VALUES[Piece::WB.index()]
+            + self.pieces[Piece::WR.index()].count_bits() as i32 * PIECE_VALUES[Piece::WR.index()]
+            + self.pieces[Piece::WQ.index()].count_bits() as i32 * PIECE_VALUES[Piece::WQ.index()])
+            / 32;
+
+        eval * mat / 1024
     }
 
     pub fn from_fen(state: &str) -> Self {

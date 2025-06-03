@@ -1,8 +1,9 @@
 use super::evaluation::evaluate;
 use super::tt::{Bound, TTEntry, TranspositionTable};
-use crate::engine::evaluation::PIECE_VALUES;
 use crate::engine::network::EvalTable;
+use crate::game::constants::PIECE_VALUES;
 use crate::game::moves::MoveKind;
+use crate::game::piece::Piece;
 use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
 
@@ -142,7 +143,7 @@ fn negamax(
         };
     }
 
-    moves.sort_by_key(|m| std::cmp::Reverse(move_score(m, board)));
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move)));
     if let Some(m) = tt_move {
         if let Some(i) = moves.iter().position(|&x| x == m) {
             moves.swap(0, i);
@@ -216,30 +217,30 @@ fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i
     alpha
 }
 
-fn move_score(m: &Move, board: &Board) -> i32 {
-    let mut score = 0;
+fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
+    if Some(*m) == tt_move {
+        return 10_000_000;
+    }
 
-    if m.get_type().is_capture() {
-        let src_piece = board.piece_at(m.get_source()).unwrap();
-        let dest_piece = board.piece_at(m.get_dest());
-
-        if let Some(dest_piece) = dest_piece {
-            score += 10 * PIECE_VALUES[dest_piece.index()] - PIECE_VALUES[src_piece.index()];
-        } else if m.get_type() == MoveKind::EnPassant {
-            score += PIECE_VALUES[0];
+    match m.get_type() {
+        MoveKind::QueenPromotion => {
+            let promo = m.get_type().get_promotion(board.side);
+            9_000_000 + PIECE_VALUES[promo.index()]
         }
-    }
+        MoveKind::Capture | MoveKind::EnPassant => {
+            let src_piece = board.piece_at(m.get_source()).unwrap();
+            let dst_piece = if m.get_type() == MoveKind::EnPassant {
+                Some(Piece::WP)
+            } else {
+                board.piece_at(m.get_dest())
+            };
 
-    if m.get_type().is_promotion() {
-        let promo_piece = m.get_type().get_promotion(board.side);
-        score += PIECE_VALUES[promo_piece.index()];
+            if let Some(victim) = dst_piece {
+                8_000_000 + 10 * PIECE_VALUES[victim.index()] - PIECE_VALUES[src_piece.index()]
+            } else {
+                0
+            }
+        }
+        _ => 0, // quiets
     }
-
-    let mut new_board = *board;
-    new_board.make_move(*m);
-    if new_board.is_attacked_by(new_board.king_square(!board.side), board.side) {
-        score += 50;
-    }
-
-    score
 }
