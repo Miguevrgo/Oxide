@@ -246,6 +246,22 @@ impl Board {
         moves
     }
 
+    pub fn in_check(&self) -> bool {
+        self.is_attacked_by(self.king_square(self.side), !self.side)
+    }
+
+    pub fn make_null_move(&mut self) {
+        self.side = !self.side;
+        self.hash.hash_side();
+
+        if let Some(sq) = self.en_passant {
+            self.hash.hash_enpassant(sq);
+            self.en_passant = None;
+        }
+
+        self.halfmoves += 1;
+    }
+
     fn is_pseudo_legal(&self, m: Move) -> bool {
         let src = m.get_source();
         let dest = m.get_dest();
