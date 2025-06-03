@@ -72,7 +72,7 @@ pub struct Accumulator {
 }
 
 impl Accumulator {
-    pub fn update_multi(&mut self, adds: &[u16]) {
+    pub fn update_multi(&mut self, adds: &[u16], subs: &[u16]) {
         const REGS: usize = 8;
         const PER: usize = REGS * 16;
 
@@ -87,9 +87,15 @@ impl Accumulator {
 
             for &add in adds {
                 let weights = &NNUE.accumulator_weights[usize::from(add)];
-
                 for (j, reg) in regs.iter_mut().enumerate() {
                     *reg += weights.vals[offset + j];
+                }
+            }
+
+            for &sub in subs {
+                let weights = &NNUE.accumulator_weights[usize::from(sub)];
+                for (j, reg) in regs.iter_mut().enumerate() {
+                    *reg -= weights.vals[offset + j];
                 }
             }
 
@@ -140,4 +146,38 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
     _mm_cvtsi128_si32(sum_32)
+}
+
+#[derive(Clone, Copy)]
+pub struct EvalEntry {
+    pub bbs: [u64; 8], // Bitboards for pieces and sides
+    pub white: Accumulator,
+    pub black: Accumulator,
+}
+
+pub struct EvalTable {
+    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
+}
+
+impl Default for EvalTable {
+    fn default() -> Self {
+        let mut table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]> =
+            unsafe { boxed_and_zeroed() };
+        for row in table.iter_mut() {
+            for entry in row.iter_mut() {
+                entry.white = Accumulator::default();
+                entry.black = Accumulator::default();
+            }
+        }
+        Self { table }
+    }
+}
+
+unsafe fn boxed_and_zeroed<T>() -> Box<T> {
+    let layout = std::alloc::Layout::new::<T>();
+    let ptr = std::alloc::alloc_zeroed(layout);
+    if ptr.is_null() {
+        std::alloc::handle_alloc_error(layout);
+    }
+    Box::from_raw(ptr.cast())
 }

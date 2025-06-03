@@ -1,6 +1,7 @@
 use super::evaluation::evaluate;
 use super::tt::{Bound, TTEntry, TranspositionTable};
 use crate::engine::evaluation::PIECE_VALUES;
+use crate::engine::network::EvalTable;
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
@@ -12,6 +13,7 @@ const MAX_DEPTH: usize = 16;
 pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
+    let mut cache = EvalTable::default();
     let mut best_eval = -INF;
     let start = Instant::now();
     let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
@@ -33,7 +35,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             std::cmp::Reverse({
                 let mut b = *board;
                 b.make_move(*m);
-                evaluate(&b)
+                evaluate(&b, &mut cache)
             })
         });
 
@@ -50,8 +52,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             let mut eval;
 
             loop {
-                eval = -negamax(&new_board, depth - 1, -beta, -alpha, &mut tt);
-
+                eval = -negamax(&new_board, depth - 1, -beta, -alpha, &mut tt, &mut cache);
                 if eval <= alpha {
                     alpha -= delta;
                 } else if eval >= beta {
@@ -85,6 +86,7 @@ fn negamax(
     mut alpha: i32,
     beta: i32,
     tt: &mut TranspositionTable,
+    cache: &mut EvalTable,
 ) -> i32 {
     let key = board.hash.0;
     let tt_move = tt.get(key).map(|entry| entry.best_move);
@@ -101,7 +103,7 @@ fn negamax(
     }
 
     if depth == 0 {
-        let eval = evaluate(board);
+        let eval = evaluate(board, cache);
         tt.insert(
             key,
             TTEntry {
@@ -137,7 +139,7 @@ fn negamax(
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
-        let score = -negamax(&new_board, depth - 1, -beta, -alpha, tt);
+        let score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
 
         if score > max_score {
             max_score = score;
