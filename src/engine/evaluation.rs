@@ -6,16 +6,6 @@ use crate::game::{
 
 use super::network::*;
 
-// Improved material values (centipawns)
-pub const PIECE_VALUES: [i32; 6] = [
-    100,   // Pawn
-    320,   // Knight
-    330,   // Bishop
-    500,   // Rook
-    900,   // Queen
-    20000, // King (not actually used in evaluation)
-];
-
 pub fn evaluate(board: &Board, cache: &mut EvalTable) -> i32 {
     let white_king_sq = board.king_square(Colour::White).index();
     let black_king_sq = board.king_square(Colour::Black).index();
@@ -56,7 +46,7 @@ pub fn evaluate(board: &Board, cache: &mut EvalTable) -> i32 {
         Network::out(&entry.black, &entry.white)
     };
 
-    scale(board, eval)
+    board.scale(eval)
 }
 
 fn fill_diff(
@@ -107,15 +97,4 @@ fn fill_diff(
     }
 
     (adds, subs)
-}
-
-fn scale(board: &Board, eval: i32) -> i32 {
-    let mut mat = (board.pieces[Piece::WN.index()].count_bits() as i32
-        * PIECE_VALUES[Piece::WN.index()])
-        + (board.pieces[Piece::WB.index()].count_bits() as i32 * PIECE_VALUES[Piece::WB.index()])
-        + (board.pieces[Piece::WR.index()].count_bits() as i32 * PIECE_VALUES[Piece::WR.index()])
-        + (board.pieces[Piece::WQ.index()].count_bits() as i32 * PIECE_VALUES[Piece::WQ.index()]);
-
-    mat = 700 + mat / 32;
-    eval * mat / 1024
 }

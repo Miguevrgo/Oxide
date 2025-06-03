@@ -29,8 +29,8 @@ pub static NNUE: Network =
 
 #[repr(C)]
 pub struct Network {
-    pub accumulator_weights: [Accumulator; INPUT_SIZE * NUM_BUCKETS],
-    pub accumulator_biases: Accumulator,
+    pub feature_weights: [Accumulator; INPUT_SIZE * NUM_BUCKETS],
+    pub feature_bias: Accumulator,
     output_weights: [Accumulator; 2],
     output_bias: i16,
 }
@@ -86,14 +86,14 @@ impl Accumulator {
             }
 
             for &add in adds {
-                let weights = &NNUE.accumulator_weights[usize::from(add)];
+                let weights = &NNUE.feature_weights[usize::from(add)];
                 for (j, reg) in regs.iter_mut().enumerate() {
                     *reg += weights.vals[offset + j];
                 }
             }
 
             for &sub in subs {
-                let weights = &NNUE.accumulator_weights[usize::from(sub)];
+                let weights = &NNUE.feature_weights[usize::from(sub)];
                 for (j, reg) in regs.iter_mut().enumerate() {
                     *reg -= weights.vals[offset + j];
                 }
@@ -108,7 +108,31 @@ impl Accumulator {
 
 impl Default for Accumulator {
     fn default() -> Self {
-        NNUE.accumulator_biases
+        NNUE.feature_bias
+    }
+}
+
+pub struct EvalEntry {
+    pub bbs: [u64; 8], // Bitboards for pieces and sides
+    pub white: Accumulator,
+    pub black: Accumulator,
+}
+
+pub struct EvalTable {
+    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
+}
+
+impl Default for EvalTable {
+    fn default() -> Self {
+        let mut table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]> =
+            unsafe { boxed_and_zeroed() };
+        for row in table.iter_mut() {
+            for entry in row.iter_mut() {
+                entry.white = Accumulator::default();
+                entry.black = Accumulator::default();
+            }
+        }
+        Self { table }
     }
 }
 
@@ -146,31 +170,6 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
     _mm_cvtsi128_si32(sum_32)
-}
-
-#[derive(Clone, Copy)]
-pub struct EvalEntry {
-    pub bbs: [u64; 8], // Bitboards for pieces and sides
-    pub white: Accumulator,
-    pub black: Accumulator,
-}
-
-pub struct EvalTable {
-    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
-}
-
-impl Default for EvalTable {
-    fn default() -> Self {
-        let mut table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]> =
-            unsafe { boxed_and_zeroed() };
-        for row in table.iter_mut() {
-            for entry in row.iter_mut() {
-                entry.white = Accumulator::default();
-                entry.black = Accumulator::default();
-            }
-        }
-        Self { table }
-    }
 }
 
 unsafe fn boxed_and_zeroed<T>() -> Box<T> {
