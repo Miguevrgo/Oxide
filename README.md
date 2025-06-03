@@ -12,7 +12,7 @@ This engine is designed to be both a learning experience and a playground for ex
 - **Bitboards:** Efficient board representation using bitboards for fast move generation and evaluation.
 - **Obstruction Difference:** Move generation optimized with obstruction difference for sliding pieces.
 - **UCI Compliance:** Fully compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI.
-- **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning for efficiency, enhanced with parallelization to find the best move faster.
+- **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning for efficiency, enhanced with several techniques, using a single thread for more comprehensive read.
 - **Simplicity & Readability:** Codebase designed to be as straightforward as possible while maintaining decent performance.
 - **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I owe the NNUE implementation.
 
@@ -20,13 +20,13 @@ This engine is designed to be both a learning experience and a playground for ex
 
 `Oxide` is a work in progress with clear goals and some fixes on the horizon:
 
-- **Fix White Play:** Currently, the engine performs well with Black but struggles with White, often choosing the worst move. This bug (likely in evaluation or search perspective) is a top priority to resolve.
-- **Expand UCI Features:** Implement additional UCI commands (e.g., `setoption`, `stop`, `ponder`) for better integration with GUIs and bots.
-- **Enhance Search:**
-  - Integrate a **transposition table** with Zobrist hashing (`zhash.rs`) for move ordering and caching.
-  - Adopt **Principal Variation Search (PVS)** with multi-threading for faster, smarter searches.
-  - Add **aspiration windows** to narrow the alpha-beta bounds and improve efficiency.
-
+- **Expand UCI Features:** Include additional info (seldepth) as well as tune iterative deepening for time based depth.
+- **Enhance Search:** Several search improvements have been made, some of them require another deep check, also, the following enhancements are planned to be tested:
+  - Razoring
+  - SEE
+  - Late Move Reductions
+  - Killer Heuristic
+  - Extensions
 ## Getting Started
 
 ### Prerequisites
