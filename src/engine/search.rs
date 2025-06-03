@@ -8,7 +8,7 @@ use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
 
 const INF: i32 = 2 << 16;
-const MATE: i32 = INF << 2;
+const MATE: i32 = INF >> 2;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
