@@ -9,6 +9,7 @@ use std::time::Instant;
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF << 2;
 const MAX_DEPTH: usize = 16;
+static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let mut best_move = Move::default();
@@ -18,6 +19,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let start = Instant::now();
     let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
 
+    NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
     for depth in 1..=final_depth {
         let mut moves = board.generate_legal_moves();
 
@@ -71,10 +73,15 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
         best_eval = local_best_eval;
         best_move = local_best_move;
 
-        println!(
-            "Depth: {depth} Eval: {best_eval} Time: {}µs",
-            start.elapsed().as_micros()
-        );
+        let time = start.elapsed().as_millis();
+        let nodes = NODE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
+        let nps = if time > 0 {
+            (1000 * nodes as u128 / time) as u64
+        } else {
+            0
+        };
+
+        println!("info depth {depth} score cp {best_eval} time {time} nodes {nodes} nps {nps}");
     }
 
     best_move
@@ -88,6 +95,7 @@ fn negamax(
     tt: &mut TranspositionTable,
     cache: &mut EvalTable,
 ) -> i32 {
+    NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let key = board.hash.0;
     let tt_move = tt.get(key).map(|entry| entry.best_move);
 
@@ -104,6 +112,17 @@ fn negamax(
 
     if depth == 0 {
         return quiesce(board, alpha, beta, cache);
+    }
+
+    // Null Move Pruning
+    if depth >= 3 && !board.in_check() {
+        let mut null_board = *board;
+        null_board.make_null_move();
+        let r = 2;
+        let null_score = -negamax(&null_board, depth - r - 1, -beta, -beta + 1, tt, cache);
+        if null_score >= beta {
+            return null_score;
+        }
     }
 
     let mut moves = board.generate_legal_moves();
@@ -164,6 +183,7 @@ fn negamax(
 }
 
 fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i32 {
+    NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let stand_pat = evaluate(board, cache);
     if stand_pat >= beta {
         return beta;
