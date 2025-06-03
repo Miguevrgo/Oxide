@@ -81,7 +81,14 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             0
         };
 
-        println!("info depth {depth} score cp {best_eval} time {time} nodes {nodes} nps {nps}");
+        if best_eval.abs() > MATE - MAX_DEPTH as i32 {
+            println!(
+                "info depth {depth} score mate {best_eval} time {time} nodes {nodes} nps {nps}"
+            );
+            break;
+        } else {
+            println!("info depth {depth} score cp {best_eval} time {time} nodes {nodes} nps {nps}");
+        }
     }
 
     best_move
