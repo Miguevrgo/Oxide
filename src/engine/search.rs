@@ -103,17 +103,7 @@ fn negamax(
     }
 
     if depth == 0 {
-        let eval = evaluate(board, cache);
-        tt.insert(
-            key,
-            TTEntry {
-                depth,
-                value: eval,
-                bound: Bound::Exact,
-                best_move: Move::default(),
-            },
-        );
-        return eval;
+        return quiesce(board, alpha, beta, cache);
     }
 
     let mut moves = board.generate_legal_moves();
@@ -171,6 +161,32 @@ fn negamax(
     );
 
     max_score
+}
+
+fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i32 {
+    let stand_pat = evaluate(board, cache);
+    if stand_pat >= beta {
+        return beta;
+    }
+
+    alpha = alpha.max(stand_pat);
+
+    let moves = board
+        .generate_legal_moves()
+        .into_iter()
+        .filter(|m| m.get_type().is_capture() || m.get_type().is_promotion());
+
+    for m in moves {
+        let mut new_board = *board;
+        new_board.make_move(m);
+        let score = -quiesce(&new_board, -beta, -alpha, cache);
+        alpha = alpha.max(score);
+        if alpha >= beta {
+            break;
+        }
+    }
+
+    alpha
 }
 
 fn move_score(m: &Move, board: &Board) -> i32 {
