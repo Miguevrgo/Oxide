@@ -1,4 +1,3 @@
-use super::evaluation::evaluate;
 use super::tt::{Bound, TTEntry, TranspositionTable};
 use crate::engine::network::EvalTable;
 use crate::game::constants::PIECE_VALUES;
@@ -38,7 +37,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             std::cmp::Reverse({
                 let mut b = *board;
                 b.make_move(*m);
-                evaluate(&b, &mut cache)
+                b.evaluate(&mut cache)
             })
         });
 
@@ -192,7 +191,7 @@ fn negamax(
 
 fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let stand_pat = evaluate(board, cache);
+    let stand_pat = board.evaluate(cache);
     if stand_pat >= beta {
         return beta;
     }
