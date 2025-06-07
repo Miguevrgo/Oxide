@@ -119,7 +119,7 @@ fn negamax(
     }
 
     if depth == 0 {
-        return quiesce(board, alpha, beta, cache);
+        return quiescence(board, alpha, beta, cache, tt);
     } else if board.is_draw() {
         return DRAW; //TODO: Add Repetition
     }
@@ -192,28 +192,82 @@ fn negamax(
     max_score
 }
 
-fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i32 {
+fn quiescence(
+    board: &Board,
+    mut alpha: i32,
+    beta: i32,
+    cache: &mut EvalTable,
+    tt: &mut TranspositionTable,
+) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let stand_pat = board.evaluate(cache);
-    if stand_pat >= beta {
-        return beta;
+    let key = board.hash.0;
+
+    if let Some(entry) = tt.get(key) {
+        let tt_score = entry.value;
+        match entry.bound {
+            Bound::Exact => return tt_score,
+            Bound::Lower if tt_score >= beta => return tt_score,
+            Bound::Upper if tt_score <= alpha => return tt_score,
+            _ => {}
+        }
     }
 
-    alpha = alpha.max(stand_pat);
+    let eval = board.evaluate(cache);
+    if eval >= beta {
+        tt.insert(
+            key,
+            TTEntry {
+                depth: 0,
+                value: eval,
+                bound: Bound::Lower,
+                best_move: Move::default(),
+            },
+        );
+        return eval;
+    }
+
+    alpha = alpha.max(eval);
 
     let moves = board.generate_legal_moves::<false>();
+
+    let mut best_move = Move::default();
+    let mut best_score = eval;
+    let mut bound = Bound::Upper;
 
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
-        let score = -quiesce(&new_board, -beta, -alpha, cache);
-        alpha = alpha.max(score);
-        if alpha >= beta {
+
+        let score = -quiescence(&new_board, -beta, -alpha, cache, tt);
+
+        if score > best_score {
+            best_score = score;
+            best_move = m;
+        }
+
+        if score >= beta {
+            bound = Bound::Lower;
             break;
         }
+
+        alpha = alpha.max(score);
     }
 
-    alpha
+    if best_score > alpha {
+        bound = Bound::Exact;
+    }
+
+    tt.insert(
+        key,
+        TTEntry {
+            depth: 0,
+            value: best_score,
+            bound,
+            best_move,
+        },
+    );
+
+    best_score
 }
 
 fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
