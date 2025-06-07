@@ -22,7 +22,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
 
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
     for depth in 1..=final_depth {
-        let mut moves = board.generate_legal_moves();
+        let mut moves = board.generate_legal_moves::<true>();
 
         if moves.is_empty() {
             return Move::default();
@@ -135,7 +135,7 @@ fn negamax(
         }
     }
 
-    let mut moves = board.generate_legal_moves();
+    let mut moves = board.generate_legal_moves::<true>();
     if moves.is_empty() {
         let king_square = board.king_square(board.side);
         return if board.is_attacked_by(king_square, !board.side) {
@@ -201,10 +201,7 @@ fn quiesce(board: &Board, mut alpha: i32, beta: i32, cache: &mut EvalTable) -> i
 
     alpha = alpha.max(stand_pat);
 
-    let moves = board
-        .generate_legal_moves()
-        .into_iter()
-        .filter(|m| m.get_type().is_capture() || m.get_type().is_promotion());
+    let moves = board.generate_legal_moves::<false>();
 
     for m in moves {
         let mut new_board = *board;
