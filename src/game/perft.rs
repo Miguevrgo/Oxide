@@ -15,7 +15,7 @@ pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
     if depth == 0 {
         return 1;
     }
-    let moves = board.generate_legal_moves();
+    let moves = board.generate_legal_moves::<true>();
     let mut total = 0;
     if depth == 1 {
         for m in &moves {
@@ -45,7 +45,7 @@ impl Board {
             return 1;
         }
 
-        let moves = self.generate_legal_moves();
+        let moves = self.generate_legal_moves::<true>();
         let current_level = level_counts.len() - depth;
         if current_level < level_counts.len() {
             level_counts[current_level] += moves.len() as u64;
@@ -69,7 +69,7 @@ impl Board {
             return 1;
         }
 
-        let moves = self.generate_legal_moves();
+        let moves = self.generate_legal_moves::<true>();
         if moves.is_empty() {
             return 0;
         }

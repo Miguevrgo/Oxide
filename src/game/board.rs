@@ -227,13 +227,19 @@ impl Board {
         moves
     }
 
-    pub fn generate_legal_moves(&self) -> Vec<Move> {
+    pub fn generate_legal_moves<const QUIET: bool>(&self) -> Vec<Move> {
         let mut moves = Vec::new();
         let side = self.side;
 
         let pseudo_moves = self.generate_pseudo_moves(side);
 
         for m in pseudo_moves {
+            let t = m.get_type();
+
+            if !(QUIET || t.is_capture() || t.is_promotion()) {
+                continue;
+            }
+
             if self.is_pseudo_legal(m) {
                 let mut new_board = *self;
                 new_board.make_move(m);
