@@ -8,6 +8,7 @@ use std::time::Instant;
 
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
+const DRAW: i32 = 0;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -119,6 +120,8 @@ fn negamax(
 
     if depth == 0 {
         return quiesce(board, alpha, beta, cache);
+    } else if board.is_draw() {
+        return DRAW; //TODO: Add Repetition
     }
 
     // Null Move Pruning
