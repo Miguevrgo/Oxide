@@ -145,7 +145,7 @@ fn negamax(
     if depth == 0 {
         return quiescence(board, alpha, beta, cache, tt);
     } else if board.is_draw() {
-        return DRAW; //TODO: Add Repetition
+        return DRAW;
     }
 
     // Null Move Pruning
@@ -165,7 +165,7 @@ fn negamax(
         return if board.is_attacked_by(king_square, !board.side) {
             -MATE - depth as i32
         } else {
-            0 // Draw
+            DRAW
         };
     }
 
@@ -179,14 +179,33 @@ fn negamax(
     let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
     let mut max_score = -INF;
-    for m in moves {
+    for (i, m) in moves.iter().enumerate() {
         let mut new_board = *board;
-        new_board.make_move(m);
-        let score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
+        new_board.make_move(*m);
+
+        let mut score;
+        // Late Move Reduction
+        if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
+            let reduction = (depth as i32 / 3).min(2) as usize;
+            score = -negamax(
+                &new_board,
+                depth - 1 - reduction,
+                -alpha - 1,
+                -alpha,
+                tt,
+                cache,
+            );
+
+            if score > alpha {
+                score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
+            }
+        } else {
+            score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
+        }
 
         if score > max_score {
             max_score = score;
-            best_move = Some(m);
+            best_move = Some(*m);
         }
         alpha = std::cmp::max(alpha, score);
 
