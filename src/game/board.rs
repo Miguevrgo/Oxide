@@ -401,8 +401,6 @@ impl Board {
         false
     }
 
-    // TODO: Use it in search later
-    #[allow(unused)]
     pub fn is_draw(&self) -> bool {
         if self.halfmoves >= 100 {
             return true;
