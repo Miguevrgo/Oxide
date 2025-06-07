@@ -49,21 +49,11 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             let mut new_board = *board;
             new_board.make_move(m);
 
-            let delta = 50;
-            let mut alpha = best_eval - delta;
-            let mut beta = best_eval + delta;
-            let mut eval;
-
-            loop {
-                eval = -negamax(&new_board, depth - 1, -beta, -alpha, &mut tt, &mut cache);
-                if eval <= alpha {
-                    alpha -= delta;
-                } else if eval >= beta {
-                    beta += delta;
-                } else {
-                    break;
-                }
-            }
+            let eval = if depth < 5 {
+                -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache)
+            } else {
+                aspiration_window(&new_board, depth - 1, best_eval, &mut tt, &mut cache)
+            };
 
             if eval > local_best_eval {
                 local_best_eval = eval;
@@ -93,6 +83,40 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     }
 
     best_move
+}
+
+fn aspiration_window(
+    board: &Board,
+    max_depth: usize,
+    estimate: i32,
+    tt: &mut TranspositionTable,
+    cache: &mut EvalTable,
+) -> i32 {
+    let mut delta = 50;
+    let mut alpha = estimate - delta;
+    let mut beta = estimate + delta;
+    let mut depth = max_depth;
+
+    loop {
+        let score = -negamax(board, depth, -beta, -alpha, tt, cache);
+
+        if score <= alpha {
+            beta = (alpha + beta) / 2;
+            alpha = (-INF).max(alpha - delta);
+            depth = max_depth;
+        } else if score >= beta {
+            beta = INF.min(beta + delta);
+            depth -= 1;
+        } else {
+            return score;
+        }
+
+        delta += delta / 2;
+        if delta > MATE / 3 {
+            alpha = -INF;
+            beta = INF;
+        }
+    }
 }
 
 fn negamax(
