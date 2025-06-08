@@ -99,7 +99,7 @@ impl UCIEngine {
     }
 
     fn go(&mut self, args: &[&str]) {
-        let mut depth = 6;
+        let mut depth = 8;
         for i in 0..args.len() {
             if args[i] == "depth" && i + 1 < args.len() {
                 depth = args[i + 1].parse().unwrap_or(depth);
@@ -139,9 +139,9 @@ impl UCIEngine {
 
     fn run_perft(&mut self, args: &[&str]) {
         let depth = if args.is_empty() {
-            6
+            8
         } else {
-            args[0].parse().unwrap_or(6)
+            args[0].parse().unwrap_or(8)
         };
 
         let start = Instant::now();
