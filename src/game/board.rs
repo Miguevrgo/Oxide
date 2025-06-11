@@ -450,8 +450,8 @@ impl Board {
 
         let entry = &mut cache.table[wbucket][bbucket];
 
-        let mut addf = [[0; 32]; 2];
-        let mut subf = [[0; 32]; 2];
+        let mut addf = [[0u16; 32]; 2];
+        let mut subf = [[0u16; 32]; 2];
         let (adds, subs) = self.fill_diff(
             &entry.bbs,
             &mut addf,
@@ -474,10 +474,9 @@ impl Board {
             self.pieces[Piece::WK.index()].0,
         ];
 
-        let eval = if self.side == Colour::White {
-            Network::out(&entry.white, &entry.black)
-        } else {
-            Network::out(&entry.black, &entry.white)
+        let eval = match self.side {
+            Colour::White => Network::out(&entry.white, &entry.black),
+            Colour::Black => Network::out(&entry.black, &entry.white),
         };
 
         self.scale(eval)
