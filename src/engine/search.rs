@@ -12,13 +12,34 @@ const DRAW: i32 = 0;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
+fn is_repetition(stack: &[u64]) -> bool {
+    if stack.len() < 6 {
+        return false;
+    }
+
+    let curr_hash = *stack.last().unwrap();
+    let mut reps = 1;
+
+    for &hash in stack.iter().rev().skip(1).step_by(2) {
+        if hash == curr_hash {
+            reps -= 1;
+            if reps == 0 {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
     let mut cache = EvalTable::default();
     let mut best_eval = -INF;
     let start = Instant::now();
     let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
+    stack.push(board.hash.0);
 
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
     for depth in 1..=final_depth {
@@ -49,11 +70,17 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
             let mut new_board = *board;
             new_board.make_move(m);
 
-            let eval = if depth < 5 {
+            stack.push(new_board.hash.0);
+
+            let eval = if is_repetition(stack) {
+                DRAW
+            } else if depth < 5 {
                 -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache)
             } else {
                 aspiration_window(&new_board, depth - 1, best_eval, &mut tt, &mut cache)
             };
+
+            stack.pop();
 
             if eval > local_best_eval {
                 local_best_eval = eval;
