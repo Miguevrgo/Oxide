@@ -12,24 +12,21 @@ const DRAW: i32 = 0;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-fn is_repetition(stack: &[u64]) -> bool {
-    if stack.len() < 6 {
+fn is_repetition(stack: &[u64], eval: i32, threshold: i32) -> bool {
+    if stack.is_empty() {
         return false;
     }
 
     let curr_hash = *stack.last().unwrap();
-    let mut reps = 1;
+    let mut count = 0;
 
-    for &hash in stack.iter().rev().skip(1).step_by(2) {
+    for &hash in stack {
         if hash == curr_hash {
-            reps -= 1;
-            if reps == 0 {
-                return true;
-            }
+            count += 1;
         }
     }
 
-    false
+    count >= 6 && eval.abs() < threshold
 }
 
 pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> Move {
@@ -38,30 +35,31 @@ pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> 
     let mut cache = EvalTable::default();
     let mut best_eval = -INF;
     let start = Instant::now();
-    let final_depth = std::cmp::min(max_depth, MAX_DEPTH);
+    let mut final_depth = std::cmp::min(max_depth, MAX_DEPTH);
     stack.push(board.hash.0);
 
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
-    for depth in 1..=final_depth {
+    let mut depth = 1;
+    while depth <= final_depth {
         let mut moves = board.generate_legal_moves::<true>();
 
         if moves.is_empty() {
             return Move::default();
         }
 
-        if let Some(entry) = tt.get(board.hash.0) {
-            if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
-                moves.swap(0, i);
-            }
-        }
-
-        moves[1..].sort_unstable_by_key(|m| {
+        moves.sort_unstable_by_key(|m| {
             std::cmp::Reverse({
                 let mut b = *board;
                 b.make_move(*m);
                 b.evaluate(&mut cache)
             })
         });
+
+        if let Some(entry) = tt.get(board.hash.0) {
+            if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
+                moves.swap(0, i);
+            }
+        }
 
         let mut local_best_eval = -INF;
         let mut local_best_move = Move::default();
@@ -72,7 +70,8 @@ pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> 
 
             stack.push(new_board.hash.0);
 
-            let eval = if is_repetition(stack) {
+            let static_eval = new_board.evaluate(&mut cache);
+            let eval = if is_repetition(stack, static_eval, 30) {
                 DRAW
             } else if depth < 5 {
                 -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache)
@@ -92,6 +91,9 @@ pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> 
         best_move = local_best_move;
 
         let time = start.elapsed().as_millis();
+        if time < 500 && depth >= 7 {
+            final_depth += 1;
+        }
         let nodes = NODE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
         let nps = if time > 0 {
             (1000 * nodes as u128 / time) as u64
@@ -107,6 +109,8 @@ pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> 
         } else {
             println!("info depth {depth} score cp {best_eval} time {time} nodes {nodes} nps {nps}");
         }
+
+        depth += 1;
     }
 
     best_move
@@ -298,7 +302,8 @@ fn quiescence(
 
     alpha = alpha.max(eval);
 
-    let moves = board.generate_legal_moves::<false>();
+    let mut moves = board.generate_legal_moves::<false>();
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None)));
 
     let mut best_move = Move::default();
     let mut best_score = eval;
