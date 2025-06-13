@@ -36,14 +36,11 @@ PuzzleId: KPMTE, FEN: 6k1/1pp2ppp/1p1p4/1r1P4/1P3P2/P5P1/4r1P1/1R1R3K b - - 0 25
 PuzzleId: NYlZC, FEN: r2qk2r/pp3ppp/4p1n1/3pPP2/1b1Pb1P1/2N2N1P/PP6/R2QKB1R b KQkq - 2 13, Movements: e6f5 d1a4
 PuzzleId: 1jtmi, FEN: 1b1r1nk1/1Q3pp1/2N1p1qp/4P3/2p5/1p2B3/6PP/5RK1 b - - 7 40, Movements: g6e4 c6e7
 PuzzleId: 6xDzq, FEN: r4qk1/pp4pp/3p2b1/3P4/PP5Q/5p2/5PPP/3R1R1K w - - 0 26, Movements: g2f3 f8f3
-PuzzleId: DFLIx, FEN: 8/7p/pkr5/1pq3NQ/3RPP2/8/PP4PP/1K1R4 w - - 3 30, Movements: h5h7 c5c2
 PuzzleId: GbPVg, FEN: 8/5kp1/1p3p2/4pP1p/2P4P/pP1K1P2/Pr2R3/8 b - - 3 44, Movements: f7e7 e2b2
 PuzzleId: IMxjr, FEN: 8/8/P5pk/2R2b1p/2B3rP/1P2P1K1/4R1P1/r7 w - - 9 46, Movements: g3f3 f5e4
 PuzzleId: IZLaL, FEN: 8/8/p4Kp1/1P3p1p/P4PbP/1k2P3/8/8 b - - 0 49, Movements: a6b5 a4b5
-PuzzleId: LsJtO, FEN: 8/p7/1p1p1pkR/3P1Np1/3Q4/3b1P1P/P1rq2PK/8 b - - 2 41, Movements: g6f5 d4f6
 PuzzleId: QeZ9e, FEN: 8/2k5/8/1p3P1p/1P1RB2r/PbP5/3K4/8 w - - 0 62, Movements: e4d5 h4d4
 PuzzleId: 5DQxq, FEN: 8/p1q4k/2p1Rr1p/3p1pp1/3Pn1P1/2PQ1P1P/PP6/4R1K1 w - - 1 31, Movements: e6f6 c7g3
-PuzzleId: 9ynjO, FEN: 5r1k/2n2Npp/p7/1p3pPP/3P1P2/1Q2P3/PP1K4/7q b - - 1 34, Movements: h8g8 f7h6
 PuzzleId: MLV9l, FEN: 1nr2brk/2p5/1pPp3P/1P1qp3/4N3/4QP2/5KPB/1R5R w - - 1 34, Movements: e4f6 d5a2
 PuzzleId: Okg2L, FEN: 3r4/1q3pkp/3p1Rp1/1NpPn3/2P5/1P1P4/5QPP/6K1 w - - 3 28, Movements: d3d4 e5g4
 PuzzleId: SkJqW, FEN: 6k1/1pr2ppp/p2Nrn2/2Pp4/qP2p3/P1R1P2P/5PP1/2Q2RK1 w - - 2 30, Movements: c1d1 a4d1
@@ -58,8 +55,6 @@ PuzzleId: 2kPy8, FEN: 8/8/kp3R2/8/p2K3P/P5pr/1P6/8 w - - 0 44, Movements: f6f4 g
 PuzzleId: QY0iO, FEN: 6k1/p1r2pp1/2q4p/2pnPN2/8/6P1/1P1QR2P/6K1 b - - 0 36, Movements: d5e7 d2d8
 PuzzleId: KkyLV, FEN: n1r5/5pkp/2nRpNp1/p3P3/5P2/4q1P1/6QP/2R4K w - - 2 34, Movements: d6c6 e3c1
 PuzzleId: 1fKK9, FEN: 8/6k1/3n4/p5pP/P3B1P1/2p1K3/8/8 w - - 2 50, Movements: e4c6 d6c4
-PuzzleId: 1V2pk, FEN: r5k1/pp4pp/2p1p3/3p4/4q1P1/2P4P/PP2PQ2/2K2R2 b - - 3 24, Movements: e6e5 f2f7
-PuzzleId: 2CeQr, FEN: 6k1/5pp1/3p3p/3PP3/4P1PP/2Q3K1/4q3/8 b - - 0 34, Movements: e2e4 c3c8
 PuzzleId: 4SzoH, FEN: 7r/pr1bppk1/2pp2p1/8/1P2q3/P2B2Q1/2P3PP/1R3R1K b - - 1 24, Movements: e4h4 f1f7
 PuzzleId: 8KdlS, FEN: 3r2k1/7p/6p1/p2q1p2/1p1npP2/7P/1Q4P1/B2R3K w - - 4 39, Movements: d1d4 d5d4
 PuzzleId: BH8T6, FEN: 7r/8/r1k2R1p/8/4P3/1P1P4/2P3PK/8 b - - 1 37, Movements: c6b5 c2c4
