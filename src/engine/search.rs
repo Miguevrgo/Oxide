@@ -9,7 +9,7 @@ use std::time::Instant;
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
-const MAX_DEPTH: usize = 16;
+const MAX_DEPTH: usize = 14;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
@@ -60,7 +60,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
 
         let time = start.elapsed().as_millis();
         if time < 500 && depth >= 7 {
-            final_depth += 1; //TODO: Add a proper time control
+            final_depth = MAX_DEPTH.min(final_depth + 1); //TODO: Add a proper time control
         }
         let nodes = NODE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
         let nps = if time > 0 {
