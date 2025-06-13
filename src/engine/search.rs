@@ -12,32 +12,24 @@ const DRAW: i32 = 0;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-pub fn find_best_move(board: &Board, max_depth: usize, stack: &mut Vec<u64>) -> Move {
+pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
     let mut cache = EvalTable::default();
     let mut best_eval = -INF;
     let start = Instant::now();
     let mut final_depth = std::cmp::min(max_depth, MAX_DEPTH);
-    stack.push(board.hash.0);
-
-    NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
     let mut depth = 1;
+    NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
+
+    let mut moves = board.generate_legal_moves::<true>();
+    if moves.is_empty() {
+        return Move::default();
+    }
+
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None)));
+
     while depth <= final_depth {
-        let mut moves = board.generate_legal_moves::<true>();
-
-        if moves.is_empty() {
-            return Move::default();
-        }
-
-        moves.sort_unstable_by_key(|m| {
-            std::cmp::Reverse({
-                let mut b = *board;
-                b.make_move(*m);
-                b.evaluate(&mut cache)
-            })
-        });
-
         if let Some(entry) = tt.get(board.hash.0) {
             if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
                 moves.swap(0, i);
@@ -177,11 +169,6 @@ fn negamax(
     }
 
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move)));
-    if let Some(m) = tt_move {
-        if let Some(i) = moves.iter().position(|&x| x == m) {
-            moves.swap(0, i);
-        }
-    }
 
     let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
@@ -323,14 +310,11 @@ fn quiescence(
 
 fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
     if Some(*m) == tt_move {
-        return 10_000_000;
+        return 10_000;
     }
 
     match m.get_type() {
-        MoveKind::QueenPromotion => {
-            let promo = m.get_type().get_promotion(board.side);
-            9_000_000 + PIECE_VALUES[promo.index()]
-        }
+        MoveKind::QueenPromotion => 9_000,
         MoveKind::Capture | MoveKind::EnPassant => {
             let src_piece = board.piece_at(m.get_source()).unwrap();
             let dst_piece = if m.get_type() == MoveKind::EnPassant {
@@ -340,7 +324,7 @@ fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
             };
 
             if let Some(victim) = dst_piece {
-                8_000_000 + 10 * PIECE_VALUES[victim.index()] - PIECE_VALUES[src_piece.index()]
+                8_000 + 10 * PIECE_VALUES[victim.index()] - PIECE_VALUES[src_piece.index()]
             } else {
                 0
             }
