@@ -106,7 +106,7 @@ impl UCIEngine {
             }
         }
 
-        let best_move = find_best_move(&self.board, depth, &mut self.stack);
+        let best_move = find_best_move(&self.board, depth);
         println!("bestmove {}", best_move);
     }
 
