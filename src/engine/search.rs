@@ -111,7 +111,7 @@ fn aspiration_window(
         }
 
         delta += delta / 2;
-        if delta > MATE / 3 {
+        if delta > 200 {
             alpha = -INF;
             beta = INF;
         }
