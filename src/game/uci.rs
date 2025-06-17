@@ -1,4 +1,5 @@
 use crate::engine::search::find_best_move;
+use crate::game::piece::Colour;
 use std::io::BufRead;
 use std::{env, time::Instant};
 
@@ -12,6 +13,10 @@ use super::{
 const NAME: &str = "Oxide";
 const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Time Control constants
+const MAX_TIME: u128 = 50000;
+const DEFAULT: f64 = 45000.0;
 
 pub struct UCIEngine {
     board: Board,
@@ -99,14 +104,50 @@ impl UCIEngine {
     }
 
     fn go(&mut self, args: &[&str]) {
-        let mut depth = 8;
-        for i in 0..args.len() {
-            if args[i] == "depth" && i + 1 < args.len() {
-                depth = args[i + 1].parse().unwrap_or(depth);
+        let mut depth: Option<usize> = None;
+        let mut wtime: Option<usize> = None;
+        let mut btime: Option<usize> = None;
+        let mut moves_left: Option<f64> = None;
+        let mut i = 0;
+
+        while i < args.len() {
+            match args[i] {
+                "depth" if i + 1 < args.len() => {
+                    i += 1;
+                    depth = args[i].parse().ok();
+                }
+                "wtime" if i + 1 < args.len() => {
+                    i += 1;
+                    wtime = args[i].parse().ok();
+                }
+                "btime" if i + 1 < args.len() => {
+                    i += 1;
+                    btime = args[i].parse().ok();
+                }
+                "movestogo" if i + 1 < args.len() => {
+                    i += 1;
+                    moves_left = args[i].parse().ok()
+                }
+                _ => {}
             }
+            i += 1;
         }
 
-        let best_move = find_best_move(&self.board, depth);
+        let time_left = match self.board.side {
+            Colour::White => wtime,
+            Colour::Black => btime,
+        };
+
+        let play_time = if let Some(t) = time_left {
+            let weight = time_weight(self.board.halfmoves as u32);
+            ((t as f64 * weight) / moves_left.unwrap_or(40.0)) as u128
+        } else {
+            let weight = time_weight(self.board.halfmoves as u32);
+            ((DEFAULT * weight) / moves_left.unwrap_or(40.0)) as u128
+        }
+        .min(MAX_TIME);
+
+        let best_move = find_best_move(&self.board, depth, play_time);
         println!("bestmove {}", best_move);
     }
 
@@ -172,5 +213,20 @@ impl MoveKind {
             MoveKind::QueenPromotion => MoveKind::QueenCapPromo,
             _ => self,
         }
+    }
+}
+
+fn time_weight(moves_played: u32) -> f64 {
+    fn lerp(a: f64, b: f64, t: f64) -> f64 {
+        a + t * (b - a)
+    }
+
+    match moves_played {
+        0..=5 => lerp(0.9, 1.15, moves_played as f64 / 5.0),
+        6..=10 => lerp(1.15, 1.38, (moves_played - 5) as f64 / 5.0),
+        11..=20 => lerp(1.38, 1.7, (moves_played - 10) as f64 / 10.0),
+        21..=30 => lerp(1.7, 2.5, (moves_played - 20) as f64 / 10.0),
+        31..=60 => lerp(2.5, 1.15, (moves_played - 30) as f64 / 30.0),
+        _ => 1.15,
     }
 }

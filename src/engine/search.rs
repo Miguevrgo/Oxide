@@ -9,17 +9,18 @@ use std::time::Instant;
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
-const MAX_DEPTH: usize = 14;
+const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
+pub fn find_best_move(board: &Board, max_depth: Option<usize>, time_play: u128) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
     let mut cache = EvalTable::default();
     let mut best_eval = -INF;
     let start = Instant::now();
-    let mut final_depth = std::cmp::min(max_depth, MAX_DEPTH);
+    let final_depth = max_depth.unwrap_or(MAX_DEPTH);
     let mut depth = 1;
+    let mut stop = false;
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 
     let mut moves = board.generate_legal_moves::<true>();
@@ -29,7 +30,7 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
 
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None)));
 
-    while depth <= final_depth {
+    while depth <= final_depth && !stop {
         if let Some(entry) = tt.get(board.hash.0) {
             if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
                 moves.swap(0, i);
@@ -59,8 +60,8 @@ pub fn find_best_move(board: &Board, max_depth: usize) -> Move {
         best_move = local_best_move;
 
         let time = start.elapsed().as_millis();
-        if time < 500 && depth >= 7 {
-            final_depth = MAX_DEPTH.min(final_depth + 1); //TODO: Add a proper time control
+        if time * 2 > time_play && depth >= 5 && final_depth == MAX_DEPTH {
+            stop = true;
         }
         let nodes = NODE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
         let nps = if time > 0 {
