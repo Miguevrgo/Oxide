@@ -1,4 +1,3 @@
-# Oxide - A Rust Chess Engine
 <div align="center">
   <img src="oxide_logo.png" alt="logo" width="200"/>
 </div>
