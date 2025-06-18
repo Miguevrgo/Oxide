@@ -1,4 +1,17 @@
 # Oxide - A Rust Chess Engine
+<div align="center">
+
+  ![logo](oxide_logo.png)
+</div>
+
+# <div align="center"> Oxide </div>
+
+<div align="center">
+
+  [![License][license-badge]][license-link]
+  [![lichess-badge]][lichess-link]
+  
+</div>
 
 ## Overview
 
@@ -43,3 +56,9 @@ If you want to make a perft test just run:
 ```
   cargo test --release -- --nocapture
 ```
+
+
+[license-badge]:https://img.shields.io/github/license/miguevrgo/Oxide?style=for-the-badge&label=license&color=success
+[license-link]:https://github.com/Miguevrgo/Oxide/blob/main/LICENSE
+[lichess-link]:https://lichess.org/@/OxideEngine
+[lichess-badge]:https://img.shields.io/badge/Play%20Oxide_Engine%20-v1-yellow?logo=lichess&style=for-the-badge
