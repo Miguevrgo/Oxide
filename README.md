@@ -37,7 +37,6 @@ This engine is designed to be both a learning experience and a playground for ex
 - **Enhance Search:** Several search improvements have been made, some of them require another deep check, also, the following enhancements are planned to be tested:
   - Razoring
   - SEE
-  - Late Move Reductions
   - Killer Heuristic
   - Extensions
 ## Getting Started
