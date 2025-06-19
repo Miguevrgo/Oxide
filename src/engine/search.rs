@@ -317,15 +317,15 @@ fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
     match m.get_type() {
         MoveKind::QueenPromotion => 9_000,
         MoveKind::Capture | MoveKind::EnPassant => {
-            let src_piece = board.piece_at(m.get_source()).unwrap();
+            let src_piece = board.piece_at(m.get_source());
             let dst_piece = if m.get_type() == MoveKind::EnPassant {
-                Some(Piece::WP)
+                Piece::WP
             } else {
                 board.piece_at(m.get_dest())
             };
 
-            if let Some(victim) = dst_piece {
-                8_000 + 10 * PIECE_VALUES[victim.index()] - PIECE_VALUES[src_piece.index()]
+            if dst_piece != Piece::Empty {
+                8_000 + 10 * PIECE_VALUES[dst_piece.index()] - PIECE_VALUES[src_piece.index()]
             } else {
                 0
             }

@@ -201,7 +201,7 @@ fn sliding_moves(src: Square, board: &Board, directions: &[(i8, i8)]) -> Vec<Mov
         let mut dest = src;
         while let Some(next) = dest.jump(file_delta, rank_delta) {
             dest = next;
-            if board.piece_at(dest).is_some() {
+            if board.piece_at(dest) != Piece::Empty {
                 moves.push(Move::new(src, dest, MoveKind::Capture));
                 break;
             }
