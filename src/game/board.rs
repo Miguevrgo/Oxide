@@ -17,7 +17,7 @@ pub struct Board {
     pub pieces: [BitBoard; 6],
     pub sides: [BitBoard; 2],
 
-    pub piece_map: [Option<Piece>; Square::COUNT],
+    pub piece_map: [Piece; Square::COUNT],
 
     pub side: Colour,
     pub castling_rights: CastlingRights,
@@ -31,7 +31,7 @@ impl Board {
         Board {
             pieces: [BitBoard::EMPTY; 6],
             sides: [BitBoard::EMPTY; 2],
-            piece_map: [None; Square::COUNT],
+            piece_map: [Piece::Empty; Square::COUNT],
             en_passant: None,
             castling_rights: CastlingRights::NONE,
             halfmoves: 0,
@@ -44,7 +44,7 @@ impl Board {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     }
 
-    pub fn piece_at(&self, square: Square) -> Option<Piece> {
+    pub fn piece_at(&self, square: Square) -> Piece {
         self.piece_map[square.index()]
     }
 
@@ -52,23 +52,23 @@ impl Board {
         let colour = piece.colour() as usize;
         self.sides[colour] = self.sides[colour].set_bit(square);
         self.pieces[piece.index()] = self.pieces[piece.index()].set_bit(square);
-        self.piece_map[square.index()] = Some(piece);
+        self.piece_map[square.index()] = piece;
         self.hash.hash_piece(piece, square);
     }
 
     fn remove_piece(&mut self, square: Square) {
-        let piece = self.piece_at(square).expect("No piece in position given");
+        let piece = self.piece_at(square);
         let colour = piece.colour() as usize;
 
         self.sides[colour] = self.sides[colour].pop_bit(square);
         self.pieces[piece.index()] = self.pieces[piece.index()].pop_bit(square);
-        self.piece_map[square.index()] = None;
+        self.piece_map[square.index()] = Piece::Empty;
         self.hash.hash_piece(piece, square);
     }
 
     pub fn make_move(&mut self, m: Move) {
         let (src, dest) = (m.get_source(), m.get_dest());
-        let src_piece = self.piece_at(src).expect("Invalid source piece");
+        let src_piece = self.piece_at(src);
         let move_type = m.get_type();
         let old_rights = self.castling_rights;
 
@@ -139,7 +139,7 @@ impl Board {
                 let row = src.row();
                 let rook_src = Square::from_row_col(row, rook_src_col);
                 let rook_dest = Square::from_row_col(row, rook_dest_col);
-                let rook_piece = self.piece_at(rook_src).expect("Expected rook");
+                let rook_piece = self.piece_at(rook_src);
 
                 self.remove_piece(src);
                 self.remove_piece(rook_src);
@@ -274,7 +274,7 @@ impl Board {
         let dest = m.get_dest();
         let move_type = m.get_type();
 
-        let piece = self.piece_at(src).unwrap();
+        let piece = self.piece_at(src);
         let occupied = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
         let opponent = self.sides[!self.side as usize];
         let forward = piece.colour().forward();
@@ -340,11 +340,11 @@ impl Board {
                     && !self.is_attacked_by(king_pass, !self.side)
                     && !self.is_attacked_by(king_end, !self.side)
                     && self.piece_at(rook_sq)
-                        == Some(if piece.colour() == Colour::White {
+                        == if piece.colour() == Colour::White {
                             Piece::WR
                         } else {
                             Piece::BR
-                        })
+                        }
             }
             MoveKind::KnightPromotion
             | MoveKind::BishopPromotion
@@ -389,6 +389,7 @@ impl Board {
         }
 
         // Pawns
+
         let pawn_offsets = if attacker == Colour::White {
             [[-1, -1], [1, -1]]
         } else {
@@ -396,10 +397,9 @@ impl Board {
         };
         for &[dr, df] in &pawn_offsets {
             if let Some(src) = square.jump(dr, df) {
-                if let Some(piece) = self.piece_at(src) {
-                    if piece.colour() == attacker && piece.is_pawn() {
-                        return true;
-                    }
+                let piece = self.piece_at(src);
+                if piece != Piece::Empty && piece.colour() == attacker && piece.is_pawn() {
+                    return true;
                 }
             }
         }
@@ -612,21 +612,23 @@ impl Board {
             print!("{}│", row + 1);
             for col in 0..8 {
                 let square = Square::from_row_col(row, col);
+                let piece = self.piece_map[square.index()];
                 let bg_colour = if (row + col) % 2 == 0 {
-                    "\x1b[48;2;240;217;181m"
+                    "\x1b[48;2;240;217;181m" // Light square
                 } else {
-                    "\x1b[48;2;181;136;99m"
+                    "\x1b[48;2;181;136;99m" // Dark square
                 };
 
-                match self.piece_map[square.index()] {
-                    Some(piece) => match piece.colour() {
-                        Colour::White => print!("{bg_colour}\x1b[38;2;255;255;255m{piece} \x1b[0m"),
-                        Colour::Black => print!("{bg_colour}\x1b[38;2;0;0;0m{piece} \x1b[0m"),
-                    },
-                    None => print!("{bg_colour}  \x1b[0m"),
+                if piece == Piece::Empty {
+                    print!("{bg_colour}  \x1b[0m");
+                } else {
+                    let fg_colour = match piece.colour() {
+                        Colour::White => "\x1b[38;2;255;255;255m",
+                        Colour::Black => "\x1b[38;2;0;0;0m",
+                    };
+                    print!("{bg_colour}{fg_colour}{piece} \x1b[0m");
                 }
             }
-
             println!("│\r");
         }
 
@@ -635,6 +637,7 @@ impl Board {
 }
 
 // For debugging
+
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "  a b c d e f g h")?;
@@ -644,9 +647,11 @@ impl std::fmt::Display for Board {
             write!(f, "{}│", row + 1)?;
             for col in 0..8 {
                 let square = Square::from_row_col(row, col);
-                match self.piece_map[square.index()] {
-                    Some(piece) => write!(f, "{} ", piece)?,
-                    None => write!(f, "  ")?,
+                let piece = self.piece_map[square.index()];
+                if piece == Piece::Empty {
+                    write!(f, "  ")?;
+                } else {
+                    write!(f, "{} ", piece)?;
                 }
             }
             writeln!(f, "│")?;

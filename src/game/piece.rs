@@ -15,18 +15,19 @@
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
 pub enum Piece {
-    WP = 0,  // White Pawn
-    BP = 1,  // Black Pawn
-    WN = 2,  // White Knight
-    BN = 3,  // Black Knight
-    WB = 4,  // White Bishop
-    BB = 5,  // Black Bishop
-    WR = 6,  // White Rook
-    BR = 7,  // Black Rook
-    WQ = 8,  // White Queen
-    BQ = 9,  // Black Queen
-    WK = 10, // White King
-    BK = 11, // Black King
+    WP = 0,      // White Pawn
+    BP = 1,      // Black Pawn
+    WN = 2,      // White Knight
+    BN = 3,      // Black Knight
+    WB = 4,      // White Bishop
+    BB = 5,      // Black Bishop
+    WR = 6,      // White Rook
+    BR = 7,      // Black Rook
+    WQ = 8,      // White Queen
+    BQ = 9,      // Black Queen
+    WK = 10,     // White King
+    BK = 11,     // Black King
+    Empty = 255, // No piece
 }
 
 // Mapping of pieces to their FEN characters.
@@ -115,6 +116,7 @@ impl std::fmt::Display for Piece {
             Piece::WR | Piece::BR => '♜',
             Piece::WQ | Piece::BQ => '♛',
             Piece::WK | Piece::BK => '♚',
+            _ => ' ',
         };
         write!(f, "{}", symbol)
     }
