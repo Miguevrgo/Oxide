@@ -1,7 +1,5 @@
-# Oxide - A Rust Chess Engine
 <div align="center">
-
-  ![logo](oxide_logo.png)
+  <img src="oxide_logo.png" alt="logo" width="200"/>
 </div>
 
 # <div align="center"> Oxide </div>
