@@ -16,7 +16,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Time Control constants
 const MAX_TIME: u128 = 50000;
-const DEFAULT: f64 = 45000.0;
+const DEFAULT: f64 = 50000.0;
 
 pub struct UCIEngine {
     board: Board,
@@ -91,16 +91,18 @@ impl UCIEngine {
             return;
         };
 
+        self.stack.clear();
+
         let moves_start = args.iter().position(|&x| x == "moves");
         if let Some(start) = moves_start {
             for move_str in &args[start + 1..] {
+                self.stack.push(self.board.hash.0);
                 let m = self.parse_move(&board, move_str);
                 board.make_move(m);
             }
         }
 
         self.board = board;
-        self.stack.clear();
     }
 
     fn go(&mut self, args: &[&str]) {
@@ -147,7 +149,7 @@ impl UCIEngine {
         }
         .min(MAX_TIME);
 
-        let best_move = find_best_move(&self.board, depth, play_time);
+        let best_move = find_best_move(&self.board, depth, play_time, &mut self.stack);
         println!("bestmove {}", best_move);
     }
 

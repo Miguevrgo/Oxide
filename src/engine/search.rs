@@ -12,7 +12,28 @@ const DRAW: i32 = 0;
 const MAX_DEPTH: usize = 16;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-pub fn find_best_move(board: &Board, max_depth: Option<usize>, time_play: u128) -> Move {
+fn is_repetition(stack: &[u64], curr_hash: u64, root: bool) -> bool {
+    if stack.len() < 6 {
+        return false;
+    }
+    let mut reps = 1 + u8::from(root);
+    for &hash in stack.iter().rev().skip(1).step_by(2) {
+        if hash == curr_hash {
+            reps -= 1;
+            if reps == 0 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub fn find_best_move(
+    board: &Board,
+    max_depth: Option<usize>,
+    time_play: u128,
+    stack: &mut Vec<u64>,
+) -> Move {
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
     let mut cache = EvalTable::default();
@@ -21,6 +42,7 @@ pub fn find_best_move(board: &Board, max_depth: Option<usize>, time_play: u128) 
     let final_depth = max_depth.unwrap_or(MAX_DEPTH);
     let mut depth = 1;
     let mut stop = false;
+    stack.push(board.hash.0);
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 
     let mut moves = board.generate_legal_moves::<true>();
@@ -43,12 +65,15 @@ pub fn find_best_move(board: &Board, max_depth: Option<usize>, time_play: u128) 
         for &m in &moves {
             let mut new_board = *board;
             new_board.make_move(m);
+            stack.push(new_board.hash.0);
 
             let eval = if depth < 5 {
-                -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache)
+                -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache, stack)
             } else {
-                aspiration_window(&new_board, depth - 1, best_eval, &mut tt, &mut cache)
+                aspiration_window(&new_board, depth - 1, best_eval, &mut tt, &mut cache, stack)
             };
+
+            stack.pop();
 
             if eval > local_best_eval {
                 local_best_eval = eval;
@@ -91,6 +116,7 @@ fn aspiration_window(
     estimate: i32,
     tt: &mut TranspositionTable,
     cache: &mut EvalTable,
+    stack: &mut Vec<u64>,
 ) -> i32 {
     let mut delta = 50;
     let mut alpha = estimate - delta;
@@ -98,7 +124,7 @@ fn aspiration_window(
     let mut depth = max_depth;
 
     loop {
-        let score = -negamax(board, depth, -beta, -alpha, tt, cache);
+        let score = -negamax(board, depth, -beta, -alpha, tt, cache, stack);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -126,6 +152,7 @@ fn negamax(
     beta: i32,
     tt: &mut TranspositionTable,
     cache: &mut EvalTable,
+    stack: &mut Vec<u64>,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let key = board.hash.0;
@@ -142,8 +169,12 @@ fn negamax(
         }
     }
 
+    if stack.len() > 6 && (board.is_draw() || is_repetition(stack, key, false)) {
+        return DRAW;
+    }
+
     if depth == 0 {
-        return quiescence(board, alpha, beta, cache, tt);
+        return quiescence(board, alpha, beta, cache, tt, stack);
     } else if board.is_draw() {
         return DRAW;
     }
@@ -153,7 +184,15 @@ fn negamax(
         let mut null_board = *board;
         null_board.make_null_move();
         let r = 2;
-        let null_score = -negamax(&null_board, depth - r - 1, -beta, -beta + 1, tt, cache);
+        let null_score = -negamax(
+            &null_board,
+            depth - r - 1,
+            -beta,
+            -beta + 1,
+            tt,
+            cache,
+            stack,
+        );
         if null_score >= beta {
             return null_score;
         }
@@ -177,6 +216,7 @@ fn negamax(
     for (i, m) in moves.iter().enumerate() {
         let mut new_board = *board;
         new_board.make_move(*m);
+        stack.push(new_board.hash.0);
 
         let mut score;
         // Late Move Reduction
@@ -189,13 +229,14 @@ fn negamax(
                 -alpha,
                 tt,
                 cache,
+                stack,
             );
 
             if score > alpha {
-                score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
+                score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack);
             }
         } else {
-            score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache);
+            score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack);
         }
 
         if score > max_score {
@@ -203,6 +244,8 @@ fn negamax(
             best_move = Some(*m);
         }
         alpha = std::cmp::max(alpha, score);
+
+        stack.pop();
 
         if alpha >= beta {
             break; // Beta cutoff
@@ -236,6 +279,7 @@ fn quiescence(
     beta: i32,
     cache: &mut EvalTable,
     tt: &mut TranspositionTable,
+    stack: &mut Vec<u64>,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let key = board.hash.0;
@@ -277,7 +321,9 @@ fn quiescence(
         let mut new_board = *board;
         new_board.make_move(m);
 
-        let score = -quiescence(&new_board, -beta, -alpha, cache, tt);
+        stack.push(new_board.hash.0);
+        let score = -quiescence(&new_board, -beta, -alpha, cache, tt, stack);
+        stack.pop();
 
         if score > best_score {
             best_score = score;

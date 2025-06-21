@@ -30,7 +30,7 @@ for line in "${lines[@]}"; do
             echo "uci"
             echo "isready"
             echo "position fen $fen moves $move1"
-            echo "go depth $DEPTH"
+            echo "go"
         } | $ENGINE
     )
 
