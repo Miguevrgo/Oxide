@@ -164,7 +164,7 @@ impl Board {
         assert_eq!(self.hash, ZHash::new(self), "Hash mismatch after move");
     }
 
-    fn generate_pseudo_moves(&self, side: Colour) -> Vec<Move> {
+    fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
         let side_idx = side as usize;
 
@@ -172,7 +172,7 @@ impl Board {
         let mut pawn_bb = self.pieces[Piece::WP.index()] & self.sides[side_idx];
         while pawn_bb != BitBoard::EMPTY {
             let src = pawn_bb.lsb();
-            moves.extend(all_pawn_moves(
+            moves.extend(all_pawn_moves::<QUIET>(
                 src,
                 if side == Colour::White {
                     Piece::WP
@@ -188,7 +188,7 @@ impl Board {
         let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side_idx];
         while knight_bb != BitBoard::EMPTY {
             let src = knight_bb.lsb();
-            moves.extend(all_knight_moves(src));
+            moves.extend(all_knight_moves::<QUIET>(src));
             knight_bb = knight_bb.pop_bit(src);
         }
 
@@ -196,7 +196,7 @@ impl Board {
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
             let src = bishop_bb.lsb();
-            moves.extend(all_bishop_moves(src, self));
+            moves.extend(all_bishop_moves::<QUIET>(src, self));
             bishop_bb = bishop_bb.pop_bit(src);
         }
 
@@ -204,7 +204,7 @@ impl Board {
         let mut rook_bb = self.pieces[Piece::WR.index()] & self.sides[side_idx];
         while rook_bb != BitBoard::EMPTY {
             let src = rook_bb.lsb();
-            moves.extend(all_rook_moves(src, self));
+            moves.extend(all_rook_moves::<QUIET>(src, self));
             rook_bb = rook_bb.pop_bit(src);
         }
 
@@ -212,7 +212,7 @@ impl Board {
         let mut queen_bb = self.pieces[Piece::WQ.index()] & self.sides[side_idx];
         while queen_bb != BitBoard::EMPTY {
             let src = queen_bb.lsb();
-            moves.extend(all_queen_moves(src, self));
+            moves.extend(all_queen_moves::<QUIET>(src, self));
             queen_bb = queen_bb.pop_bit(src);
         }
 
@@ -220,7 +220,7 @@ impl Board {
         let mut king_bb = self.pieces[Piece::WK.index()] & self.sides[side_idx];
         while king_bb != BitBoard::EMPTY {
             let src = king_bb.lsb();
-            moves.extend(all_king_moves(src));
+            moves.extend(all_king_moves::<QUIET>(src));
             king_bb = king_bb.pop_bit(src);
         }
 
@@ -231,15 +231,9 @@ impl Board {
         let mut moves = Vec::new();
         let side = self.side;
 
-        let pseudo_moves = self.generate_pseudo_moves(side);
+        let pseudo_moves = self.generate_pseudo_moves::<QUIET>(side);
 
         for m in pseudo_moves {
-            let t = m.get_type();
-
-            if !(QUIET || t.is_capture() || t.is_promotion()) {
-                continue;
-            }
-
             if self.is_pseudo_legal(m) {
                 let mut new_board = *self;
                 new_board.make_move(m);
