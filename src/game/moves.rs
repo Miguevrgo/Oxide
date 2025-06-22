@@ -133,7 +133,7 @@ impl MoveKind {
     }
 }
 
-pub fn all_pawn_moves(src: Square, piece: Piece, board: &Board) -> Vec<Move> {
+pub fn all_pawn_moves<const QUIET: bool>(src: Square, piece: Piece, board: &Board) -> Vec<Move> {
     let mut moves = Vec::with_capacity(4);
     let forward = piece.colour().forward();
 
@@ -147,12 +147,12 @@ pub fn all_pawn_moves(src: Square, piece: Piece, board: &Board) -> Vec<Move> {
             moves.push(Move::new(src, dest, MoveKind::RookPromotion));
             moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
             moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
-        } else {
+        } else if QUIET {
             moves.push(Move::new(src, dest, MoveKind::Quiet));
         }
     }
 
-    if start_rank.get_bit(src) {
+    if start_rank.get_bit(src) && QUIET {
         moves.push(Move::new(
             src,
             src.jump(0, 2 * forward).unwrap(),
@@ -182,12 +182,14 @@ pub fn all_pawn_moves(src: Square, piece: Piece, board: &Board) -> Vec<Move> {
     moves
 }
 
-pub fn all_knight_moves(src: Square) -> Vec<Move> {
+pub fn all_knight_moves<const QUIET: bool>(src: Square) -> Vec<Move> {
     let mut moves = Vec::with_capacity(8);
 
     for &(file_delta, rank_delta) in &KNIGHT_OFFSETS {
         if let Some(dest) = src.jump(file_delta, rank_delta) {
-            moves.push(Move::new(src, dest, MoveKind::Quiet));
+            if QUIET {
+                moves.push(Move::new(src, dest, MoveKind::Quiet));
+            }
             moves.push(Move::new(src, dest, MoveKind::Capture));
         }
     }
@@ -195,7 +197,11 @@ pub fn all_knight_moves(src: Square) -> Vec<Move> {
     moves
 }
 
-fn sliding_moves(src: Square, board: &Board, directions: &[(i8, i8)]) -> Vec<Move> {
+fn sliding_moves<const QUIET: bool>(
+    src: Square,
+    board: &Board,
+    directions: &[(i8, i8)],
+) -> Vec<Move> {
     let mut moves = Vec::with_capacity(8);
     for &(file_delta, rank_delta) in directions {
         let mut dest = src;
@@ -205,37 +211,41 @@ fn sliding_moves(src: Square, board: &Board, directions: &[(i8, i8)]) -> Vec<Mov
                 moves.push(Move::new(src, dest, MoveKind::Capture));
                 break;
             }
-            moves.push(Move::new(src, dest, MoveKind::Quiet));
+            if QUIET {
+                moves.push(Move::new(src, dest, MoveKind::Quiet));
+            }
         }
     }
     moves
 }
 
-pub fn all_bishop_moves(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves(src, board, &BISHOP_DIRECTIONS)
+pub fn all_bishop_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
+    sliding_moves::<QUIET>(src, board, &BISHOP_DIRECTIONS)
 }
 
-pub fn all_rook_moves(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves(src, board, &ROOK_DIRECTIONS)
+pub fn all_rook_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
+    sliding_moves::<QUIET>(src, board, &ROOK_DIRECTIONS)
 }
 
-pub fn all_queen_moves(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves(src, board, &BISHOP_DIRECTIONS)
+pub fn all_queen_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
+    sliding_moves::<QUIET>(src, board, &BISHOP_DIRECTIONS)
         .into_iter()
-        .chain(sliding_moves(src, board, &ROOK_DIRECTIONS))
+        .chain(sliding_moves::<QUIET>(src, board, &ROOK_DIRECTIONS))
         .collect()
 }
 
-pub fn all_king_moves(src: Square) -> Vec<Move> {
+pub fn all_king_moves<const QUIET: bool>(src: Square) -> Vec<Move> {
     let mut moves = Vec::with_capacity(4);
     for &(file_delta, rank_delta) in &KING_OFFSETS {
         if let Some(dest) = src.jump(file_delta, rank_delta) {
-            moves.push(Move::new(src, dest, MoveKind::Quiet));
+            if QUIET {
+                moves.push(Move::new(src, dest, MoveKind::Quiet));
+            }
             moves.push(Move::new(src, dest, MoveKind::Capture));
         }
     }
 
-    if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY {
+    if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY && QUIET {
         moves.push(Move::new(
             src,
             Square::from_row_col(src.row(), 6),
