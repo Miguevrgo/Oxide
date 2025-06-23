@@ -238,7 +238,7 @@ impl Board {
                 let mut new_board = *self;
                 new_board.make_move(m);
 
-                if !new_board.is_attacked_by(new_board.king_square(side), !side) {
+                if !new_board.is_attacked_by::<false>(new_board.king_square(side), !side) {
                     moves.push(m);
                 }
             }
@@ -248,7 +248,7 @@ impl Board {
     }
 
     pub fn in_check(&self) -> bool {
-        self.is_attacked_by(self.king_square(self.side), !self.side)
+        self.is_attacked_by::<true>(self.king_square(self.side), !self.side)
     }
 
     pub fn make_null_move(&mut self) {
@@ -330,9 +330,9 @@ impl Board {
 
                 valid_rights
                     && inter_squares & occupied == BitBoard::EMPTY
-                    && !self.is_attacked_by(self.king_square(self.side), !self.side)
-                    && !self.is_attacked_by(king_pass, !self.side)
-                    && !self.is_attacked_by(king_end, !self.side)
+                    && !self.in_check()
+                    && !self.is_attacked_by::<false>(king_pass, !self.side)
+                    && !self.is_attacked_by::<false>(king_end, !self.side)
                     && self.piece_at(rook_sq)
                         == if piece.colour() == Colour::White {
                             Piece::WR
@@ -354,7 +354,7 @@ impl Board {
     /// Returns whether the given square is attacked by the given side or not,
     /// it uses sliding for bishop-queen and pawn, Obstruction difference with Infuehr improvement
     /// and precalculated bitboards for Knights and Kings
-    pub fn is_attacked_by(&self, square: Square, attacker: Colour) -> bool {
+    pub fn is_attacked_by<const CHECK: bool>(&self, square: Square, attacker: Colour) -> bool {
         let idx = square.index();
         let enemy_side = self.sides[attacker as usize];
 
@@ -364,7 +364,9 @@ impl Board {
         }
 
         // Kings
-        if KING_ATTACKS[idx] & self.pieces[Piece::WK.index()] & enemy_side != BitBoard::EMPTY {
+        if !CHECK
+            && KING_ATTACKS[idx] & self.pieces[Piece::WK.index()] & enemy_side != BitBoard::EMPTY
+        {
             return true;
         }
 
@@ -383,7 +385,6 @@ impl Board {
         }
 
         // Pawns
-
         let pawn_offsets = if attacker == Colour::White {
             [[-1, -1], [1, -1]]
         } else {
