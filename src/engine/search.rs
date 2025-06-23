@@ -200,8 +200,7 @@ fn negamax(
 
     let mut moves = board.generate_legal_moves::<true>();
     if moves.is_empty() {
-        let king_square = board.king_square(board.side);
-        return if board.is_attacked_by(king_square, !board.side) {
+        return if board.in_check() {
             -MATE - depth as i32
         } else {
             DRAW
