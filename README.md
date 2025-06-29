@@ -25,7 +25,7 @@ This engine is designed to be both a learning experience and a playground for ex
 - **UCI Compliance:** Fully compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI.
 - **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning for efficiency, enhanced with several techniques, using a single thread for more comprehensive read.
 - **Simplicity & Readability:** Codebase designed to be as straightforward as possible while maintaining decent performance.
-- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I the net for evaluation in NNUE ⚠️ This net is not going to be used for any professional tournament ⚠️.
+- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I the implementation for the NNUE ⚠️ The Oxide nets provided with the release are trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets ⚠️.
 
 ## Objectives & Planned Improvements
 
