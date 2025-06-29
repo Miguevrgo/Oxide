@@ -25,7 +25,7 @@ static BUCKETS: [usize; 64] = [
 ];
 
 pub static NNUE: Network =
-    unsafe { std::mem::transmute(*include_bytes!("../../resources/nnue-net.bin")) };
+    unsafe { std::mem::transmute(*include_bytes!("../../resources/oxide-v1.bin")) };
 
 #[repr(C)]
 pub struct Network {
