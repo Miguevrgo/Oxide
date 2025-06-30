@@ -142,10 +142,10 @@ impl UCIEngine {
 
         let play_time = if let Some(t) = time_left {
             let weight = time_weight(self.board.halfmoves as u32);
-            ((t as f64 * weight) / moves_left.unwrap_or(40.0)) as u128
+            ((t as f64 * weight) / moves_left.unwrap_or(20.0)) as u128
         } else {
             let weight = time_weight(self.board.halfmoves as u32);
-            ((DEFAULT * weight) / moves_left.unwrap_or(40.0)) as u128
+            ((DEFAULT * weight) / moves_left.unwrap_or(20.0)) as u128
         }
         .min(MAX_TIME);
 
