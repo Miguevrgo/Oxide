@@ -22,7 +22,7 @@ pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
             let mut new_board = *board;
             new_board.make_move(*m);
             let count = perft_with_moves(&mut new_board, depth - 1);
-            println!("{}: {}", m, count);
+            println!("{m}: {count}");
             total += count;
         }
     } else {

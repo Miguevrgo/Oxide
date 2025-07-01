@@ -646,7 +646,7 @@ impl std::fmt::Display for Board {
                 if piece == Piece::Empty {
                     write!(f, "  ")?;
                 } else {
-                    write!(f, "{} ", piece)?;
+                    write!(f, "{piece} ",)?;
                 }
             }
             writeln!(f, "│")?;

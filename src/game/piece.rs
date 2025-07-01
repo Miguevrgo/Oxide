@@ -118,7 +118,7 @@ impl std::fmt::Display for Piece {
             Piece::WK | Piece::BK => '♚',
             _ => ' ',
         };
-        write!(f, "{}", symbol)
+        write!(f, "{symbol}")
     }
 }
 
