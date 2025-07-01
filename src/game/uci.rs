@@ -52,8 +52,8 @@ impl UCIEngine {
 
         match parts[0] {
             "uci" => {
-                println!("id name {} {}", NAME, VERSION);
-                println!("id author {}", AUTHOR);
+                println!("id name {NAME} {VERSION}");
+                println!("id author {AUTHOR}");
                 println!("uciok");
             }
             "ucinewgame" => {
@@ -142,15 +142,15 @@ impl UCIEngine {
 
         let play_time = if let Some(t) = time_left {
             let weight = time_weight(self.board.halfmoves as u32);
-            ((t as f64 * weight) / moves_left.unwrap_or(20.0)) as u128
+            ((t as f64 * weight) / moves_left.unwrap_or(30.0)) as u128
         } else {
             let weight = time_weight(self.board.halfmoves as u32);
-            ((DEFAULT * weight) / moves_left.unwrap_or(20.0)) as u128
+            ((DEFAULT * weight) / moves_left.unwrap_or(30.0)) as u128
         }
         .min(MAX_TIME);
 
         let best_move = find_best_move(&self.board, depth, play_time, &mut self.stack);
-        println!("bestmove {}", best_move);
+        println!("bestmove {best_move}");
     }
 
     fn parse_move(&self, board: &Board, move_str: &str) -> Move {

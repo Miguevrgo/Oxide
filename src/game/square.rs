@@ -102,6 +102,6 @@ impl std::fmt::Display for Square {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let file = (self.col() as u8 + b'a') as char;
         let rank = (self.row() + 1).to_string();
-        write!(f, "{}{}", file, rank)
+        write!(f, "{file}{rank}")
     }
 }
