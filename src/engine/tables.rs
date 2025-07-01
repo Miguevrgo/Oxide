@@ -36,3 +36,22 @@ impl TranspositionTable {
         self.tt.insert(key, entry);
     }
 }
+
+pub const MAX_PLY: usize = 64;
+
+#[derive(Clone, Copy, Default)]
+pub struct PlyData {
+    pub killers: [Move; 2],
+}
+
+pub struct SearchTables {
+    pub ply: [PlyData; MAX_PLY],
+}
+
+impl SearchTables {
+    pub fn new() -> Self {
+        Self {
+            ply: [(); MAX_PLY].map(|_| PlyData::default()),
+        }
+    }
+}

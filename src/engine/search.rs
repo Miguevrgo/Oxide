@@ -1,5 +1,5 @@
 use crate::engine::network::EvalTable;
-use crate::engine::tables::{Bound, TTEntry, TranspositionTable};
+use crate::engine::tables::{Bound, SearchTables, TTEntry, TranspositionTable};
 use crate::game::constants::PIECE_VALUES;
 use crate::game::moves::MoveKind;
 use crate::game::piece::Piece;
@@ -37,11 +37,13 @@ pub fn find_best_move(
     let mut best_move = Move::default();
     let mut tt = TranspositionTable::new();
     let mut cache = EvalTable::default();
+    let mut context = SearchTables::new();
     let mut best_eval = -INF;
-    let start = Instant::now();
-    let final_depth = max_depth.unwrap_or(MAX_DEPTH);
     let mut depth = 1;
     let mut stop = false;
+    let start = Instant::now();
+    let final_depth = max_depth.unwrap_or(MAX_DEPTH);
+    let ply = stack.len();
     stack.push(board.hash.0);
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 
@@ -50,7 +52,7 @@ pub fn find_best_move(
         return Move::default();
     }
 
-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None)));
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, ply, &context)));
 
     while depth <= final_depth && !stop {
         if let Some(entry) = tt.get(board.hash.0) {
@@ -68,9 +70,26 @@ pub fn find_best_move(
             stack.push(new_board.hash.0);
 
             let eval = if depth < 5 {
-                -negamax(&new_board, depth - 1, -INF, INF, &mut tt, &mut cache, stack)
+                -negamax(
+                    &new_board,
+                    depth - 1,
+                    -INF,
+                    INF,
+                    &mut tt,
+                    &mut cache,
+                    stack,
+                    &mut context,
+                )
             } else {
-                aspiration_window(&new_board, depth - 1, best_eval, &mut tt, &mut cache, stack)
+                aspiration_window(
+                    &new_board,
+                    depth - 1,
+                    best_eval,
+                    &mut tt,
+                    &mut cache,
+                    stack,
+                    &mut context,
+                )
             };
 
             stack.pop();
@@ -117,6 +136,7 @@ fn aspiration_window(
     tt: &mut TranspositionTable,
     cache: &mut EvalTable,
     stack: &mut Vec<u64>,
+    ctx: &mut SearchTables,
 ) -> i32 {
     let mut delta = 50;
     let mut alpha = estimate - delta;
@@ -124,7 +144,7 @@ fn aspiration_window(
     let mut depth = max_depth;
 
     loop {
-        let score = -negamax(board, depth, -beta, -alpha, tt, cache, stack);
+        let score = -negamax(board, depth, -beta, -alpha, tt, cache, stack, ctx);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -145,6 +165,7 @@ fn aspiration_window(
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Thread search
 fn negamax(
     board: &Board,
     depth: usize,
@@ -153,6 +174,7 @@ fn negamax(
     tt: &mut TranspositionTable,
     cache: &mut EvalTable,
     stack: &mut Vec<u64>,
+    ctx: &mut SearchTables,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let key = board.hash.0;
@@ -174,7 +196,7 @@ fn negamax(
     }
 
     if depth == 0 {
-        return quiescence(board, alpha, beta, cache, tt, stack);
+        return quiescence(board, alpha, beta, cache, tt, stack, ctx);
     } else if board.is_draw() {
         return DRAW;
     }
@@ -192,6 +214,7 @@ fn negamax(
             tt,
             cache,
             stack,
+            ctx,
         );
         if null_score >= beta {
             return null_score;
@@ -207,47 +230,91 @@ fn negamax(
         };
     }
 
-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move)));
+    let ply = stack.len();
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move, ply, ctx)));
 
     let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
     let mut max_score = -INF;
+    let mut searched_pv = false;
+    let ply = stack.len();
+
     for (i, m) in moves.iter().enumerate() {
         let mut new_board = *board;
         new_board.make_move(*m);
         stack.push(new_board.hash.0);
 
         let mut score;
-        // Late Move Reduction
-        if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
-            let reduction = (depth as i32 / 3).min(2) as usize;
-            score = -negamax(
-                &new_board,
-                depth - 1 - reduction,
-                -alpha - 1,
-                -alpha,
-                tt,
-                cache,
-                stack,
-            );
 
-            if score > alpha {
-                score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack);
+        // Principal Variation Search
+        if searched_pv {
+            // Late Move Reductions
+            if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
+                let reduction = (depth as i32 / 3).min(2) as usize;
+                score = -negamax(
+                    &new_board,
+                    depth - 1 - reduction,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    cache,
+                    stack,
+                    ctx,
+                );
+
+                if score > alpha {
+                    score = -negamax(
+                        &new_board,
+                        depth - 1,
+                        -alpha - 1,
+                        -alpha,
+                        tt,
+                        cache,
+                        stack,
+                        ctx,
+                    );
+                    if score > alpha {
+                        score =
+                            -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack, ctx);
+                    }
+                }
+            } else {
+                score = -negamax(
+                    &new_board,
+                    depth - 1,
+                    -alpha - 1,
+                    -alpha,
+                    tt,
+                    cache,
+                    stack,
+                    ctx,
+                );
+                if score > alpha {
+                    score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack, ctx);
+                }
             }
         } else {
-            score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack);
+            score = -negamax(&new_board, depth - 1, -beta, -alpha, tt, cache, stack, ctx);
+            searched_pv = true;
         }
 
         if score > max_score {
             max_score = score;
             best_move = Some(*m);
         }
-        alpha = std::cmp::max(alpha, score);
 
+        alpha = alpha.max(score);
         stack.pop();
 
         if alpha >= beta {
-            break; // Beta cutoff
+            if !m.get_type().is_capture() {
+                let killers = &mut ctx.ply[ply].killers;
+                if killers[0] != *m {
+                    killers[1] = killers[0];
+                    killers[0] = *m;
+                }
+            }
+            break;
         }
     }
 
@@ -279,6 +346,7 @@ fn quiescence(
     cache: &mut EvalTable,
     tt: &mut TranspositionTable,
     stack: &mut Vec<u64>,
+    ctx: &mut SearchTables,
 ) -> i32 {
     NODE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let key = board.hash.0;
@@ -310,7 +378,8 @@ fn quiescence(
     alpha = alpha.max(eval);
 
     let mut moves = board.generate_legal_moves::<false>();
-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None)));
+    let ply = stack.len();
+    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, ply, ctx)));
 
     let mut best_move = Move::default();
     let mut best_score = eval;
@@ -321,7 +390,7 @@ fn quiescence(
         new_board.make_move(m);
 
         stack.push(new_board.hash.0);
-        let score = -quiescence(&new_board, -beta, -alpha, cache, tt, stack);
+        let score = -quiescence(&new_board, -beta, -alpha, cache, tt, stack, ctx);
         stack.pop();
 
         if score > best_score {
@@ -354,27 +423,44 @@ fn quiescence(
     best_score
 }
 
-fn move_score(m: &Move, board: &Board, tt_move: Option<Move>) -> i32 {
+pub fn move_score(
+    m: &Move,
+    board: &Board,
+    tt_move: Option<Move>,
+    ply: usize,
+    ctx: &SearchTables,
+) -> i32 {
+    // 1. TT move
     if Some(*m) == tt_move {
         return 10_000;
     }
 
-    match m.get_type() {
-        MoveKind::QueenPromotion => 9_000,
-        MoveKind::Capture | MoveKind::EnPassant => {
-            let src_piece = board.piece_at(m.get_source());
-            let dst_piece = if m.get_type() == MoveKind::EnPassant {
-                Piece::WP
-            } else {
-                board.piece_at(m.get_dest())
-            };
-
-            if dst_piece != Piece::Empty {
-                8_000 + 10 * PIECE_VALUES[dst_piece.index()] - PIECE_VALUES[src_piece.index()]
-            } else {
-                0
-            }
-        }
-        _ => 0, // quiets
+    // 2. Promotion
+    if m.get_type() == MoveKind::QueenPromotion {
+        return 9_000;
     }
+
+    // 3. Capture ~ en passant
+    if matches!(m.get_type(), MoveKind::Capture | MoveKind::EnPassant) {
+        let src_piece = board.piece_at(m.get_source());
+        let dst_piece = if m.get_type() == MoveKind::EnPassant {
+            Piece::WP // o el peón capturado por en passant
+        } else {
+            board.piece_at(m.get_dest())
+        };
+
+        if dst_piece != Piece::Empty {
+            return 8_000 + 10 * PIECE_VALUES[dst_piece.index()] - PIECE_VALUES[src_piece.index()];
+        }
+    }
+
+    // 4. Killer moves
+    let killers = ctx.ply[ply].killers;
+    if *m == killers[0] {
+        return 7_000;
+    } else if *m == killers[1] {
+        return 6_900;
+    }
+
+    0
 }
