@@ -9,7 +9,7 @@ use std::time::Instant;
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
-const MAX_DEPTH: usize = 16;
+const MAX_DEPTH: usize = 32;
 static NODE_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn is_repetition(stack: &[u64], curr_hash: u64, root: bool) -> bool {
