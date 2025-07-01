@@ -1,7 +1,7 @@
+use crate::game::moves::Move;
 use std::collections::HashMap;
 
-use crate::game::moves::Move;
-
+/// Transposition Table
 #[derive(Copy, Clone)]
 pub enum Bound {
     Exact,
@@ -36,4 +36,3 @@ impl TranspositionTable {
         self.tt.insert(key, entry);
     }
 }
-

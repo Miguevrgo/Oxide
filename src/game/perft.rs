@@ -265,7 +265,7 @@ mod tests {
         let mut speeds = Vec::new();
 
         for (fen, desc, expected, depth) in PERFT_SUITE {
-            println!("\nTesting: {} ({})", desc, fen);
+            println!("\nTesting: {desc} ({fen})");
             let mut board = Board::from_fen(fen);
             let start = Instant::now();
             let nodes = board.perft::<BULK>(depth);
@@ -280,10 +280,7 @@ mod tests {
             speeds.push(mnps);
 
             if nodes == expected {
-                println!(
-                    "✓ {}: {} nodes (expected {}) - PASSED - {:.2} Mnps",
-                    desc, nodes, expected, mnps
-                );
+                println!("✓ {desc}: {nodes} nodes (expected {expected}) - PASSED - {mnps:.2} Mnps");
                 passed += 1;
             } else {
                 println!(
@@ -310,9 +307,9 @@ mod tests {
         };
 
         println!("\nTest Summary:");
-        println!("Passed: {}/{}", passed, total_tests);
+        println!("Passed: {passed}/{total_tests}");
         println!("Failed: {}/{}", failures.len(), total_tests);
-        println!("Average Speed: {:.2} Mnps", avg_mnps);
+        println!("Average Speed: {avg_mnps:.2} Mnps");
 
         if !failures.is_empty() {
             println!("\nFailed Tests:");

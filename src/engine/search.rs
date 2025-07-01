@@ -1,5 +1,5 @@
-use super::tt::{Bound, TTEntry, TranspositionTable};
 use crate::engine::network::EvalTable;
+use crate::engine::tables::{Bound, TTEntry, TranspositionTable};
 use crate::game::constants::PIECE_VALUES;
 use crate::game::moves::MoveKind;
 use crate::game::piece::Piece;
