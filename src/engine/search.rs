@@ -9,11 +9,11 @@ use std::time::Instant;
 const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
-const MAX_DEPTH: usize = 32;
+const MAX_DEPTH: u8 = 32;
 
 pub fn find_best_move(
     board: &Board,
-    max_depth: Option<usize>,
+    max_depth: Option<u8>,
     time_play: u128,
     data: &mut SearchData,
 ) -> Move {
@@ -90,7 +90,7 @@ pub fn find_best_move(
 
 fn aspiration_window(
     board: &Board,
-    max_depth: usize,
+    max_depth: u8,
     estimate: i32,
     cache: &mut EvalTable,
     data: &mut SearchData,
@@ -125,7 +125,7 @@ fn aspiration_window(
 #[allow(clippy::too_many_arguments)] // Thread search
 fn negamax(
     board: &Board,
-    depth: usize,
+    depth: u8,
     mut alpha: i32,
     beta: i32,
     cache: &mut EvalTable,
@@ -136,8 +136,8 @@ fn negamax(
     let tt_move = data.tt.get(key).map(|entry| entry.best_move);
 
     if let Some(entry) = data.tt.get(key) {
-        if entry.depth >= depth {
-            match entry.bound {
+        if entry.depth() >= depth {
+            match entry.bound() {
                 Bound::Exact => return entry.value,
                 Bound::Lower if entry.value >= beta => return entry.value,
                 Bound::Upper if entry.value <= alpha => return entry.value,
@@ -195,7 +195,7 @@ fn negamax(
         if searched_pv {
             // Late Move Reductions
             if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
-                let reduction = (depth as i32 / 3).min(2) as usize;
+                let reduction = (depth as i32 / 3).min(2) as u8;
                 score = -negamax(
                     &new_board,
                     depth - 1 - reduction,
@@ -253,10 +253,9 @@ fn negamax(
     data.tt.insert(
         key,
         TTEntry {
-            depth,
             value: max_score,
-            bound,
             best_move: best_move.unwrap_or_default(),
+            flags: TTEntry::make_flags(depth, bound),
         },
     );
 
@@ -275,7 +274,7 @@ fn quiescence(
 
     if let Some(entry) = data.tt.get(key) {
         let tt_score = entry.value;
-        match entry.bound {
+        match entry.bound() {
             Bound::Exact => return tt_score,
             Bound::Lower if tt_score >= beta => return tt_score,
             Bound::Upper if tt_score <= alpha => return tt_score,
@@ -288,10 +287,9 @@ fn quiescence(
         data.tt.insert(
             key,
             TTEntry {
-                depth: 0,
                 value: eval,
-                bound: Bound::Lower,
                 best_move: Move::default(),
+                flags: TTEntry::make_flags(0, Bound::Lower),
             },
         );
         return eval;
@@ -334,10 +332,9 @@ fn quiescence(
     data.tt.insert(
         key,
         TTEntry {
-            depth: 0,
             value: best_score,
-            bound,
             best_move,
+            flags: TTEntry::make_flags(0, bound),
         },
     );
 
