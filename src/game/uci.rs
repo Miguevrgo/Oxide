@@ -15,8 +15,8 @@ const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Time Control constants
-const MAX_TIME: u128 = 50000;
-const DEFAULT: f64 = 50000.0;
+const MAX_TIME: u128 = 180000;
+const DEFAULT: f64 = 4000.0;
 
 pub struct UCIEngine {
     board: Board,
@@ -109,6 +109,8 @@ impl UCIEngine {
         let mut depth: Option<usize> = None;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
+        let mut winc: Option<usize> = None;
+        let mut binc: Option<usize> = None;
         let mut moves_left: Option<f64> = None;
         let mut i = 0;
 
@@ -126,6 +128,14 @@ impl UCIEngine {
                     i += 1;
                     btime = args[i].parse().ok();
                 }
+                "winc" if i + 1 < args.len() => {
+                    i += 1;
+                    winc = args[i].parse().ok();
+                }
+                "binc" if i + 1 < args.len() => {
+                    i += 1;
+                    binc = args[i].parse().ok();
+                }
                 "movestogo" if i + 1 < args.len() => {
                     i += 1;
                     moves_left = args[i].parse().ok()
@@ -139,13 +149,31 @@ impl UCIEngine {
             Colour::White => wtime,
             Colour::Black => btime,
         };
+        let time_incr = match self.board.side {
+            Colour::White => binc,
+            Colour::Black => winc,
+        };
 
         let play_time = if let Some(t) = time_left {
-            let weight = time_weight(self.board.halfmoves as u32);
-            ((t as f64 * weight) / moves_left.unwrap_or(30.0)) as u128
+            (if let Some(inc) = time_incr {
+                (t / 30 + 3 * inc / 4) as u128
+            } else {
+                (t as f64 / moves_left.unwrap_or(30.0)
+                    * match self.board.halfmoves {
+                        0..=10 => 0.5,
+                        11..=30 => 1.0,
+                        31..=50 => 1.25,
+                        _ => 0.9,
+                    }) as u128
+            })
+            .min((t as f64 * 0.95) as u128)
         } else {
-            let weight = time_weight(self.board.halfmoves as u32);
-            ((DEFAULT * weight) / moves_left.unwrap_or(30.0)) as u128
+            (DEFAULT
+                * match self.board.halfmoves {
+                    0..=10 => 0.64,
+                    11..=30 => 1.0,
+                    _ => 1.25,
+                }) as u128
         }
         .min(MAX_TIME);
 
@@ -215,20 +243,5 @@ impl MoveKind {
             MoveKind::QueenPromotion => MoveKind::QueenCapPromo,
             _ => self,
         }
-    }
-}
-
-fn time_weight(moves_played: u32) -> f64 {
-    fn lerp(a: f64, b: f64, t: f64) -> f64 {
-        a + t * (b - a)
-    }
-
-    match moves_played {
-        0..=5 => lerp(0.9, 1.15, moves_played as f64 / 5.0),
-        6..=10 => lerp(1.15, 1.38, (moves_played - 5) as f64 / 5.0),
-        11..=20 => lerp(1.38, 1.7, (moves_played - 10) as f64 / 10.0),
-        21..=30 => lerp(1.7, 2.5, (moves_played - 20) as f64 / 10.0),
-        31..=60 => lerp(2.5, 1.15, (moves_played - 30) as f64 / 30.0),
-        _ => 1.15,
     }
 }

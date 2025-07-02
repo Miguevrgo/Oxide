@@ -48,10 +48,6 @@ pub fn find_best_move(
     NODE_COUNT.store(0, std::sync::atomic::Ordering::Relaxed);
 
     let mut moves = board.generate_legal_moves::<true>();
-    if moves.is_empty() {
-        return Move::default();
-    }
-
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, ply, &context)));
 
     while depth <= final_depth && !stop {
@@ -104,7 +100,7 @@ pub fn find_best_move(
         best_move = local_best_move;
 
         let time = start.elapsed().as_millis();
-        if time * 2 > time_play && depth >= 5 && final_depth == MAX_DEPTH {
+        if time * 2 > time_play && depth >= 4 && final_depth == MAX_DEPTH {
             stop = true;
         }
         let nodes = NODE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
