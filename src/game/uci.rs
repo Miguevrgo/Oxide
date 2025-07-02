@@ -1,4 +1,5 @@
 use crate::engine::search::find_best_move;
+use crate::engine::tables::SearchData;
 use crate::game::piece::Colour;
 use std::io::BufRead;
 use std::{env, time::Instant};
@@ -20,14 +21,14 @@ const DEFAULT: f64 = 4000.0;
 
 pub struct UCIEngine {
     board: Board,
-    pub stack: Vec<u64>,
+    pub data: SearchData,
 }
 
 impl UCIEngine {
     pub fn new() -> Self {
         UCIEngine {
             board: Board::default(),
-            stack: Vec::new(),
+            data: SearchData::new(),
         }
     }
 
@@ -58,7 +59,7 @@ impl UCIEngine {
             }
             "ucinewgame" => {
                 self.board = Board::default();
-                self.stack.clear();
+                self.data.clear();
             }
             "isready" => {
                 println!("readyok");
@@ -91,12 +92,12 @@ impl UCIEngine {
             return;
         };
 
-        self.stack.clear();
+        self.data.clear();
 
         let moves_start = args.iter().position(|&x| x == "moves");
         if let Some(start) = moves_start {
             for move_str in &args[start + 1..] {
-                self.stack.push(self.board.hash.0);
+                self.data.push(self.board.hash.0);
                 let m = self.parse_move(&board, move_str);
                 board.make_move(m);
             }
@@ -106,6 +107,7 @@ impl UCIEngine {
     }
 
     fn go(&mut self, args: &[&str]) {
+        self.data.tt.tt.clear(); // TODO:
         let mut depth: Option<usize> = None;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
@@ -177,7 +179,7 @@ impl UCIEngine {
         }
         .min(MAX_TIME);
 
-        let best_move = find_best_move(&self.board, depth, play_time, &mut self.stack);
+        let best_move = find_best_move(&self.board, depth, play_time, &mut self.data);
         println!("bestmove {best_move}");
     }
 
