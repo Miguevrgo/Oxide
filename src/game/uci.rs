@@ -108,7 +108,7 @@ impl UCIEngine {
 
     fn go(&mut self, args: &[&str]) {
         self.data.tt.tt.clear(); // TODO:
-        let mut depth: Option<usize> = None;
+        let mut depth: Option<u8> = None;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
         let mut winc: Option<usize> = None;

@@ -10,11 +10,32 @@ pub enum Bound {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct TTEntry {
-    pub depth: usize,
     pub value: i32,
-    pub bound: Bound,
     pub best_move: Move,
+    pub flags: u8, // depth(6) + bound(2)
+}
+
+impl TTEntry {
+    #[inline]
+    pub fn depth(&self) -> u8 {
+        self.flags >> 2
+    }
+
+    #[inline]
+    pub fn bound(&self) -> Bound {
+        match self.flags & 0b11 {
+            1 => Bound::Lower,
+            2 => Bound::Upper,
+            _ => Bound::Exact,
+        }
+    }
+
+    #[inline]
+    pub fn make_flags(depth: u8, bound: Bound) -> u8 {
+        ((depth.min(63)) << 2) | (bound as u8 & 0b11)
+    }
 }
 
 pub struct TranspositionTable {
