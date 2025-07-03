@@ -48,12 +48,14 @@ This engine is designed to be both a learning experience and a playground for ex
    ```bash
    git clone https://github.com/Miguevrgo/Oxide.git
    cd Oxide
-   cargo run --release
+   RUSTFLAGS="-C target-cpu=native" cargo build --release
+   ./target/release/oxide
 ```
 If you want to make a perft test just run:
 ```
   cargo test --release -- --nocapture
 ```
+Or you can directly use the perft UCI command.
 
 
 [license-badge]:https://img.shields.io/github/license/miguevrgo/Oxide?style=for-the-badge&label=license&color=success
