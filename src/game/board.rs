@@ -528,12 +528,16 @@ impl Board {
     }
 
     pub fn scale(&self, eval: i32) -> i32 {
-        let mat = (700
-            + self.pieces[Piece::WN.index()].count_bits() as i32 * PIECE_VALUES[Piece::WN.index()]
-            + self.pieces[Piece::WB.index()].count_bits() as i32 * PIECE_VALUES[Piece::WB.index()]
-            + self.pieces[Piece::WR.index()].count_bits() as i32 * PIECE_VALUES[Piece::WR.index()]
-            + self.pieces[Piece::WQ.index()].count_bits() as i32 * PIECE_VALUES[Piece::WQ.index()])
-            / 32;
+        let mat = 700
+            + (self.pieces[Piece::WN.index()].count_bits() as i32
+                * PIECE_VALUES[Piece::WN.index()]
+                + self.pieces[Piece::WB.index()].count_bits() as i32
+                    * PIECE_VALUES[Piece::WB.index()]
+                + self.pieces[Piece::WR.index()].count_bits() as i32
+                    * PIECE_VALUES[Piece::WR.index()]
+                + self.pieces[Piece::WQ.index()].count_bits() as i32
+                    * PIECE_VALUES[Piece::WQ.index()])
+                / 32;
 
         eval * mat / 1024
     }
