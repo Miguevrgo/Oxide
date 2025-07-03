@@ -120,7 +120,6 @@ fn aspiration_window(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // Thread search
 fn negamax(
     board: &Board,
     depth: u8,

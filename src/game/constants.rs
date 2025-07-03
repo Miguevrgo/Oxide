@@ -2,10 +2,10 @@ use crate::game::bitboard::BitBoard;
 
 pub const PIECE_VALUES: [i32; 6] = [
     100,  // Pawn
-    320,  // Knight
-    330,  // Bishop
-    500,  // Rook
-    900,  // Queen
+    420,  // Knight
+    430,  // Bishop
+    600,  // Rook
+    1000, // Queen
     2000, // King
 ];
 
