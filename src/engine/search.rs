@@ -1,8 +1,6 @@
 use crate::engine::network::EvalTable;
 use crate::engine::tables::{Bound, SearchData, TTEntry};
-use crate::game::constants::PIECE_VALUES;
 use crate::game::moves::MoveKind;
-use crate::game::piece::Piece;
 use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
 
@@ -341,6 +339,13 @@ fn quiescence(
     best_score
 }
 
+#[inline]
+fn mvv_lva(m: Move, board: &Board) -> i32 {
+    let victim = board.piece_at(m.get_dest()).index() as i32;
+    let attacker = board.piece_at(m.get_source()).index() as i32;
+    8 * victim - attacker
+}
+
 pub fn move_score(
     m: &Move,
     board: &Board,
@@ -359,17 +364,9 @@ pub fn move_score(
     }
 
     // 3. Capture ~ en passant
-    if matches!(m.get_type(), MoveKind::Capture | MoveKind::EnPassant) {
-        let src_piece = board.piece_at(m.get_source());
-        let dst_piece = if m.get_type() == MoveKind::EnPassant {
-            Piece::WP // o el peón capturado por en passant
-        } else {
-            board.piece_at(m.get_dest())
-        };
 
-        if dst_piece != Piece::Empty {
-            return 8_000 + 10 * PIECE_VALUES[dst_piece.index()] - PIECE_VALUES[src_piece.index()];
-        }
+    if m.get_type().is_capture() {
+        return 8000 + mvv_lva(*m, board);
     }
 
     // 4. Killer moves
