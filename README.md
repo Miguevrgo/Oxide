@@ -25,7 +25,7 @@ This engine is designed to be both a learning experience and a playground for ex
 - **UCI Compliance:** Generally compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI. Missing threads, table size options
 - **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning for efficiency, enhanced with several techniques, using a single thread for more comprehensive read.
 - **Simplicity & Readability:** Codebase designed to be as straightforward as possible while maintaining decent performance.
-- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I the implementation for the NNUE ⚠️ The Oxide nets provided with the release are trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets.
+- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I the implementation for the NNUE ⚠️ The Oxide nets provided with the release are trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets and [bullet](https://github.com/jw1912/bullet).
 
 ## Objectives & Planned Improvements
 
