@@ -164,6 +164,23 @@ fn negamax(
         }
     }
 
+    // Reverse Futility pruning
+    let static_eval = board.evaluate(cache);
+    let pv_node = beta > alpha + 1;
+    data.ply_data[data.ply].eval = static_eval;
+    let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
+    let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
+
+    if depth <= 6
+        && !pv_node
+        && !board.in_check()
+        && beta < MATE
+        && static_eval - rfp_margin >= beta
+        && !board.is_king_pawn()
+    {
+        return static_eval;
+    }
+
     let mut moves = board.generate_legal_moves::<true>();
     if moves.is_empty() {
         return if board.in_check() {
