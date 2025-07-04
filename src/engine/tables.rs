@@ -63,6 +63,7 @@ pub const MAX_PLY: usize = 256;
 #[derive(Clone, Copy, Default)]
 pub struct PlyData {
     pub killers: [Move; 2],
+    pub eval: i32,
 }
 
 pub struct SearchData {
