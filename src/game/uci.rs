@@ -162,8 +162,8 @@ impl UCIEngine {
             } else {
                 (t as f64 / moves_left.unwrap_or(30.0)
                     * match self.board.halfmoves {
-                        0..=10 => 0.5,
-                        11..=30 => 1.0,
+                        0..=10 => 0.6,
+                        11..=30 => 1.1,
                         31..=50 => 1.25,
                         _ => 0.9,
                     }) as u128
