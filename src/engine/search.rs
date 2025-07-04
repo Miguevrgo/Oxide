@@ -154,11 +154,11 @@ fn negamax(
     }
 
     // Null Move Pruning
-    if depth >= 3 && !board.in_check() {
+    if depth >= 3 && !board.in_check() && !board.is_king_pawn() {
         let mut null_board = *board;
         null_board.make_null_move();
-        let r = 2;
-        let null_score = -negamax(&null_board, depth - r - 1, -beta, -beta + 1, cache, data);
+        let r = (3 + depth / 4).min(depth);
+        let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, cache, data);
         if null_score >= beta {
             return null_score;
         }
@@ -179,7 +179,6 @@ fn negamax(
     let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
     let mut max_score = -INF;
-    let mut searched_pv = false;
 
     for (i, m) in moves.iter().enumerate() {
         let mut new_board = *board;
@@ -189,7 +188,9 @@ fn negamax(
         let mut score;
 
         // Principal Variation Search
-        if searched_pv {
+        if i == 0 {
+            score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
+        } else {
             // Late Move Reductions
             if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
                 let reduction = (depth as i32 / 3).min(2) as u8;
@@ -214,9 +215,6 @@ fn negamax(
                     score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
                 }
             }
-        } else {
-            score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
-            searched_pv = true;
         }
 
         if score > max_score {
