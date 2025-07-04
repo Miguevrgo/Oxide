@@ -402,6 +402,12 @@ impl Board {
         false
     }
 
+    pub fn is_king_pawn(&self) -> bool {
+        let occ = self.sides[self.side as usize];
+        let pawn_king = self.pieces[Piece::WP.index()] | self.pieces[Piece::WK.index()];
+        occ ^ (occ & pawn_king) == BitBoard::EMPTY
+    }
+
     pub fn is_draw(&self) -> bool {
         if self.halfmoves >= 100 {
             return true;
