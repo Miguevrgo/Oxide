@@ -9,6 +9,18 @@ const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
 const MAX_DEPTH: u8 = 32;
 
+// Search Parameters
+pub const ASPIRATION_DELTA: i32 = 50;
+pub const ASPIRATION_DELTA_LIMIT: i32 = 200;
+
+pub const NMP_MIN_DEPTH: u8 = 3;
+pub const NMP_BASE_REDUCTION: u8 = 4;
+pub const NMP_DIVISOR: u8 = 4;
+
+pub const RFP_DEPTH: u8 = 6;
+pub const LMR_DEPTH: u8 = 3;
+pub const LMR_THRESHOLD: usize = 3;
+
 pub fn find_best_move(
     board: &Board,
     max_depth: Option<u8>,
@@ -93,7 +105,7 @@ fn aspiration_window(
     cache: &mut EvalTable,
     data: &mut SearchData,
 ) -> i32 {
-    let mut delta = 50;
+    let mut delta = ASPIRATION_DELTA;
     let mut alpha = estimate - delta;
     let mut beta = estimate + delta;
     let mut depth = max_depth;
@@ -113,7 +125,7 @@ fn aspiration_window(
         }
 
         delta += delta / 2;
-        if delta > 200 {
+        if delta > ASPIRATION_DELTA_LIMIT {
             alpha = -INF;
             beta = INF;
         }
@@ -154,10 +166,10 @@ fn negamax(
     }
 
     // Null Move Pruning
-    if depth >= 3 && !board.in_check() && !board.is_king_pawn() {
+    if depth > NMP_MIN_DEPTH && !board.in_check() && !board.is_king_pawn() {
         let mut null_board = *board;
         null_board.make_null_move();
-        let r = (3 + depth / 4).min(depth);
+        let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
         let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, cache, data);
         if null_score >= beta {
             return null_score;
@@ -171,12 +183,12 @@ fn negamax(
     let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
     let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
 
-    if depth <= 6
+    if depth <= RFP_DEPTH
         && !pv_node
-        && !board.in_check()
         && beta < MATE
         && static_eval - rfp_margin >= beta
         && !board.is_king_pawn()
+        && !board.in_check()
     {
         return static_eval;
     }
@@ -208,8 +220,12 @@ fn negamax(
         if i == 0 {
             score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
         } else {
-            // Late Move Reductions
-            if depth >= 3 && i >= 3 && !m.get_type().is_capture() && !m.get_type().is_promotion() {
+            // Late Move Reductions // TODO ln
+            if depth >= LMR_DEPTH
+                && i >= LMR_THRESHOLD
+                && !m.get_type().is_capture()
+                && !m.get_type().is_promotion()
+            {
                 let reduction = (depth as i32 / 3).min(2) as u8;
                 score = -negamax(
                     &new_board,
