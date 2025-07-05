@@ -175,6 +175,10 @@ pub fn bishop_attacks(occ: u64, sq: usize) -> BitBoard {
     BitBoard(line_attacks(occ, &MASKS[sq][2]) | line_attacks(occ, &MASKS[sq][3]))
 }
 
+pub fn queen_attacks(occ: u64, sq: usize) -> BitBoard {
+    rook_attacks(occ, sq) | bishop_attacks(occ, sq)
+}
+
 const MASKS: [[SMasks; 4]; 64] = [
     [
         SMasks::new(0x0000000000000000, 0x00000000000000fe),

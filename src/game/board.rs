@@ -1,5 +1,7 @@
 use super::{
-    constants::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES},
+    constants::{
+        bishop_attacks, queen_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES,
+    },
     moves::MoveKind,
     square::Square,
     zobrist::ZHash,
@@ -167,20 +169,13 @@ impl Board {
     fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> Vec<Move> {
         let mut moves = Vec::with_capacity(64);
         let side_idx = side as usize;
+        let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
         // Pawn moves
         let mut pawn_bb = self.pieces[Piece::WP.index()] & self.sides[side_idx];
         while pawn_bb != BitBoard::EMPTY {
             let src = pawn_bb.lsb();
-            moves.extend(all_pawn_moves::<QUIET>(
-                src,
-                if side == Colour::White {
-                    Piece::WP
-                } else {
-                    Piece::BP
-                },
-                self,
-            ));
+            self.all_pawn_moves::<QUIET>(src, side, &mut moves);
             pawn_bb = pawn_bb.pop_bit(src);
         }
 
@@ -188,7 +183,7 @@ impl Board {
         let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side_idx];
         while knight_bb != BitBoard::EMPTY {
             let src = knight_bb.lsb();
-            moves.extend(all_knight_moves::<QUIET>(src));
+            self.all_knight_moves::<QUIET>(src, occ.0, &mut moves);
             knight_bb = knight_bb.pop_bit(src);
         }
 
@@ -196,7 +191,7 @@ impl Board {
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
             let src = bishop_bb.lsb();
-            moves.extend(all_bishop_moves::<QUIET>(src, self));
+            self.all_slider_moves::<QUIET>(src, occ.0, bishop_attacks, &mut moves);
             bishop_bb = bishop_bb.pop_bit(src);
         }
 
@@ -204,7 +199,7 @@ impl Board {
         let mut rook_bb = self.pieces[Piece::WR.index()] & self.sides[side_idx];
         while rook_bb != BitBoard::EMPTY {
             let src = rook_bb.lsb();
-            moves.extend(all_rook_moves::<QUIET>(src, self));
+            self.all_slider_moves::<QUIET>(src, occ.0, rook_attacks, &mut moves);
             rook_bb = rook_bb.pop_bit(src);
         }
 
@@ -212,7 +207,7 @@ impl Board {
         let mut queen_bb = self.pieces[Piece::WQ.index()] & self.sides[side_idx];
         while queen_bb != BitBoard::EMPTY {
             let src = queen_bb.lsb();
-            moves.extend(all_queen_moves::<QUIET>(src, self));
+            self.all_slider_moves::<QUIET>(src, occ.0, queen_attacks, &mut moves);
             queen_bb = queen_bb.pop_bit(src);
         }
 
@@ -220,7 +215,7 @@ impl Board {
         let mut king_bb = self.pieces[Piece::WK.index()] & self.sides[side_idx];
         while king_bb != BitBoard::EMPTY {
             let src = king_bb.lsb();
-            moves.extend(all_king_moves::<QUIET>(src));
+            self.all_king_moves::<QUIET>(src, occ.0, &mut moves);
             king_bb = king_bb.pop_bit(src);
         }
 
