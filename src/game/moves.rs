@@ -3,21 +3,9 @@ use crate::game::square::Square;
 use super::{
     bitboard::BitBoard,
     board::Board,
+    constants::{KING_ATTACKS, KNIGHT_ATTACKS},
     piece::{Colour, Piece},
 };
-
-#[rustfmt::skip]
-const KNIGHT_OFFSETS: [(i8, i8); 8] = [
-    (2, 1), (2, -1), (-2, 1), (-2, -1),
-    (1, 2), (1, -2), (-1, 2), (-1, -2),
-];
-#[rustfmt::skip]
-const KING_OFFSETS: [(i8, i8); 8] = [
-    (1, 0), (1, 1), (1, -1), (0, 1),
-    (0, -1), (-1, 0), (-1, 1), (-1, -1),
-];
-const BISHOP_DIRECTIONS: [(i8, i8); 4] = [(1, 1), (1, -1), (-1, 1), (-1, -1)];
-const ROOK_DIRECTIONS: [(i8, i8); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
 /// A move needs 16 bits to be stored, the information is contained
 /// in the following way:
@@ -133,15 +121,103 @@ impl MoveKind {
     }
 }
 
-pub fn all_pawn_moves<const QUIET: bool>(src: Square, piece: Piece, board: &Board) -> Vec<Move> {
-    let mut moves = Vec::with_capacity(4);
-    let forward = piece.colour().forward();
+impl Board {
+    pub fn all_slider_moves<const QUIET: bool>(
+        &self,
+        src: Square,
+        occ: u64,
+        attacks_fn: fn(u64, usize) -> BitBoard,
+        moves: &mut Vec<Move>,
+    ) {
+        let attacks = attacks_fn(occ, src.index());
 
-    let start_rank = BitBoard::START_RANKS[piece.colour() as usize];
-    let promo_rank = BitBoard::PROMO_RANKS[piece.colour() as usize];
-    let opponent = board.sides[!piece.colour() as usize];
+        if QUIET {
+            let mut quiets = attacks & !BitBoard(occ);
+            while quiets != BitBoard::EMPTY {
+                let dst = quiets.lsb();
+                moves.push(Move::new(src, dst, MoveKind::Quiet));
+                quiets = quiets.pop_bit(dst);
+            }
+        }
 
-    if let Some(dest) = src.jump(0, forward) {
+        let mut caps = attacks & self.sides[!self.side as usize];
+        while caps != BitBoard::EMPTY {
+            let dst = caps.lsb();
+            moves.push(Move::new(src, dst, MoveKind::Capture));
+            caps = caps.pop_bit(dst);
+        }
+    }
+
+    pub fn all_king_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut Vec<Move>) {
+        let attacks = KING_ATTACKS[src.index()];
+
+        if QUIET {
+            let mut quiets = attacks & !BitBoard(occ);
+            while quiets != BitBoard::EMPTY {
+                let dst = quiets.lsb();
+                moves.push(Move::new(src, dst, MoveKind::Quiet));
+                quiets = quiets.pop_bit(dst);
+            }
+            if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY {
+                moves.push(Move::new(
+                    src,
+                    Square::from_row_col(src.row(), 6),
+                    MoveKind::Castle,
+                ));
+                moves.push(Move::new(
+                    src,
+                    Square::from_row_col(src.row(), 2),
+                    MoveKind::Castle,
+                ));
+            }
+        }
+
+        let mut caps = attacks & self.sides[!self.side as usize];
+        while caps != BitBoard::EMPTY {
+            let dst = caps.lsb();
+            moves.push(Move::new(src, dst, MoveKind::Capture));
+            caps = caps.pop_bit(dst);
+        }
+    }
+
+    pub fn all_knight_moves<const QUIET: bool>(
+        &self,
+        src: Square,
+        occ: u64,
+        moves: &mut Vec<Move>,
+    ) {
+        let attacks = KNIGHT_ATTACKS[src.index()];
+
+        if QUIET {
+            let mut quiets = attacks & !BitBoard(occ);
+            while quiets != BitBoard::EMPTY {
+                let dst = quiets.lsb();
+                moves.push(Move::new(src, dst, MoveKind::Quiet));
+                quiets = quiets.pop_bit(dst);
+            }
+        }
+
+        let mut caps = attacks & self.sides[!self.side as usize];
+        while caps != BitBoard::EMPTY {
+            let dst = caps.lsb();
+            moves.push(Move::new(src, dst, MoveKind::Capture));
+            caps = caps.pop_bit(dst);
+        }
+    }
+
+    pub fn all_pawn_moves<const QUIET: bool>(
+        &self,
+        src: Square,
+        colour: Colour,
+        moves: &mut Vec<Move>,
+    ) {
+        let forward = colour.forward();
+
+        let start_rank = BitBoard::START_RANKS[colour as usize];
+        let promo_rank = BitBoard::PROMO_RANKS[colour as usize];
+        let opponent = self.sides[!colour as usize];
+
+        let dest = src.jump(0, forward).unwrap();
         if promo_rank.get_bit(dest) {
             moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
             moves.push(Move::new(src, dest, MoveKind::RookPromotion));
@@ -149,114 +225,33 @@ pub fn all_pawn_moves<const QUIET: bool>(src: Square, piece: Piece, board: &Boar
             moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
         } else if QUIET {
             moves.push(Move::new(src, dest, MoveKind::Quiet));
+            if start_rank.get_bit(src) {
+                moves.push(Move::new(
+                    src,
+                    src.jump(0, 2 * forward).unwrap(),
+                    MoveKind::DoublePush,
+                ));
+            }
         }
-    }
 
-    if start_rank.get_bit(src) && QUIET {
-        moves.push(Move::new(
-            src,
-            src.jump(0, 2 * forward).unwrap(),
-            MoveKind::DoublePush,
-        ));
-    }
-
-    for delta in [(-1, forward), (1, forward)] {
-        if let Some(dest) = src.jump(delta.0, delta.1) {
-            if opponent.get_bit(dest) {
-                if promo_rank.get_bit(dest) {
-                    moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
-                    moves.push(Move::new(src, dest, MoveKind::RookCapPromo));
-                    moves.push(Move::new(src, dest, MoveKind::BishopCapPromo));
-                    moves.push(Move::new(src, dest, MoveKind::KnightCapPromo));
-                } else {
-                    moves.push(Move::new(src, dest, MoveKind::Capture));
+        for delta in [(-1, forward), (1, forward)] {
+            if let Some(dest) = src.jump(delta.0, delta.1) {
+                if opponent.get_bit(dest) {
+                    if promo_rank.get_bit(dest) {
+                        moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
+                        moves.push(Move::new(src, dest, MoveKind::RookCapPromo));
+                        moves.push(Move::new(src, dest, MoveKind::BishopCapPromo));
+                        moves.push(Move::new(src, dest, MoveKind::KnightCapPromo));
+                    } else {
+                        moves.push(Move::new(src, dest, MoveKind::Capture));
+                    }
+                } else if self.en_passant == Some(dest) {
+                    let ep_target = dest.jump(0, -forward).expect("Invalid en passant target");
+                    if opponent.get_bit(ep_target) {
+                        moves.push(Move::new(src, dest, MoveKind::EnPassant));
+                    }
                 }
-            } else if board.en_passant == Some(dest) {
-                let ep_target = dest.jump(0, -forward).expect("Invalid en passant target");
-                if opponent.get_bit(ep_target) {
-                    moves.push(Move::new(src, dest, MoveKind::EnPassant));
-                }
             }
         }
     }
-    moves
-}
-
-pub fn all_knight_moves<const QUIET: bool>(src: Square) -> Vec<Move> {
-    let mut moves = Vec::with_capacity(8);
-
-    for &(file_delta, rank_delta) in &KNIGHT_OFFSETS {
-        if let Some(dest) = src.jump(file_delta, rank_delta) {
-            if QUIET {
-                moves.push(Move::new(src, dest, MoveKind::Quiet));
-            }
-            moves.push(Move::new(src, dest, MoveKind::Capture));
-        }
-    }
-
-    moves
-}
-
-fn sliding_moves<const QUIET: bool>(
-    src: Square,
-    board: &Board,
-    directions: &[(i8, i8)],
-) -> Vec<Move> {
-    let mut moves = Vec::with_capacity(8);
-    for &(file_delta, rank_delta) in directions {
-        let mut dest = src;
-        while let Some(next) = dest.jump(file_delta, rank_delta) {
-            dest = next;
-            if board.piece_at(dest) != Piece::Empty {
-                moves.push(Move::new(src, dest, MoveKind::Capture));
-                break;
-            }
-            if QUIET {
-                moves.push(Move::new(src, dest, MoveKind::Quiet));
-            }
-        }
-    }
-    moves
-}
-
-pub fn all_bishop_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves::<QUIET>(src, board, &BISHOP_DIRECTIONS)
-}
-
-pub fn all_rook_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves::<QUIET>(src, board, &ROOK_DIRECTIONS)
-}
-
-pub fn all_queen_moves<const QUIET: bool>(src: Square, board: &Board) -> Vec<Move> {
-    sliding_moves::<QUIET>(src, board, &BISHOP_DIRECTIONS)
-        .into_iter()
-        .chain(sliding_moves::<QUIET>(src, board, &ROOK_DIRECTIONS))
-        .collect()
-}
-
-pub fn all_king_moves<const QUIET: bool>(src: Square) -> Vec<Move> {
-    let mut moves = Vec::with_capacity(4);
-    for &(file_delta, rank_delta) in &KING_OFFSETS {
-        if let Some(dest) = src.jump(file_delta, rank_delta) {
-            if QUIET {
-                moves.push(Move::new(src, dest, MoveKind::Quiet));
-            }
-            moves.push(Move::new(src, dest, MoveKind::Capture));
-        }
-    }
-
-    if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY && QUIET {
-        moves.push(Move::new(
-            src,
-            Square::from_row_col(src.row(), 6),
-            MoveKind::Castle,
-        ));
-        moves.push(Move::new(
-            src,
-            Square::from_row_col(src.row(), 2),
-            MoveKind::Castle,
-        ));
-    }
-
-    moves
 }
