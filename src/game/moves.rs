@@ -121,6 +121,7 @@ impl MoveKind {
     }
 }
 
+/// Move Generation Logic
 impl Board {
     pub fn all_slider_moves<const QUIET: bool>(
         &self,
@@ -158,17 +159,18 @@ impl Board {
                 moves.push(Move::new(src, dst, MoveKind::Quiet));
                 quiets = quiets.pop_bit(dst);
             }
+
             if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY {
-                moves.push(Move::new(
-                    src,
-                    Square::from_row_col(src.row(), 6),
-                    MoveKind::Castle,
-                ));
-                moves.push(Move::new(
-                    src,
-                    Square::from_row_col(src.row(), 2),
-                    MoveKind::Castle,
-                ));
+                for &dest in &[
+                    Square::from("g1"),
+                    Square::from("c1"),
+                    Square::from("g8"),
+                    Square::from("c8"),
+                ] {
+                    if self.is_castle_legal(dest) {
+                        moves.push(Move::new(src, dest, MoveKind::Castle));
+                    }
+                }
             }
         }
 
@@ -209,28 +211,31 @@ impl Board {
         &self,
         src: Square,
         colour: Colour,
+        occ: BitBoard,
         moves: &mut Vec<Move>,
     ) {
         let forward = colour.forward();
-
         let start_rank = BitBoard::START_RANKS[colour as usize];
         let promo_rank = BitBoard::PROMO_RANKS[colour as usize];
         let opponent = self.sides[!colour as usize];
 
-        let dest = src.jump(0, forward).unwrap();
-        if promo_rank.get_bit(dest) {
-            moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
-            moves.push(Move::new(src, dest, MoveKind::RookPromotion));
-            moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
-            moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
-        } else if QUIET {
-            moves.push(Move::new(src, dest, MoveKind::Quiet));
-            if start_rank.get_bit(src) {
-                moves.push(Move::new(
-                    src,
-                    src.jump(0, 2 * forward).unwrap(),
-                    MoveKind::DoublePush,
-                ));
+        if let Some(dest) = src.jump(0, forward) {
+            if !occ.get_bit(dest) {
+                if promo_rank.get_bit(dest) {
+                    moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
+                    moves.push(Move::new(src, dest, MoveKind::RookPromotion));
+                    moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
+                    moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
+                } else if QUIET {
+                    moves.push(Move::new(src, dest, MoveKind::Quiet));
+                    if start_rank.get_bit(src) {
+                        let dbl = src.jump(0, 2 * forward).unwrap();
+                        let middle = src.jump(0, forward).unwrap();
+                        if !occ.get_bit(middle) && !occ.get_bit(dbl) {
+                            moves.push(Move::new(src, dbl, MoveKind::DoublePush));
+                        }
+                    }
+                }
             }
         }
 
