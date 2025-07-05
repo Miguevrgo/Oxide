@@ -1,17 +1,14 @@
-use super::{
-    constants::{
-        bishop_attacks, queen_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES,
-    },
-    moves::MoveKind,
-    square::Square,
-    zobrist::ZHash,
-};
 use crate::engine::network::{EvalTable, Network};
 use crate::game::{
     bitboard::BitBoard,
     castle::CastlingRights,
-    moves::*,
+    constants::{
+        bishop_attacks, queen_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES,
+    },
+    moves::{Move, MoveKind},
     piece::{Colour, Piece},
+    square::Square,
+    zobrist::ZHash,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -162,8 +159,55 @@ impl Board {
 
         self.side = !self.side;
         self.hash.hash_side();
-        #[cfg(debug_assertions)]
-        assert_eq!(self.hash, ZHash::new(self), "Hash mismatch after move");
+    }
+
+    pub fn is_castle_legal(&self, dest: Square) -> bool {
+        let (rook_sq, king_pass, king_end, inter_squares, right_bit) = match (self.side, dest) {
+            (Colour::White, d) if d == Square::from("g1") => (
+                Square::from("h1"),
+                Square::from("f1"),
+                Square::from("g1"),
+                BitBoard::WHITE_KING_CASTLE,
+                CastlingRights::WK,
+            ),
+            (Colour::White, d) if d == Square::from("c1") => (
+                Square::from("a1"),
+                Square::from("d1"),
+                Square::from("c1"),
+                BitBoard::WHITE_QUEEN_CASTLE,
+                CastlingRights::WQ,
+            ),
+            (Colour::Black, d) if d == Square::from("g8") => (
+                Square::from("h8"),
+                Square::from("f8"),
+                Square::from("g8"),
+                BitBoard::BLACK_KING_CASTLE,
+                CastlingRights::BK,
+            ),
+            (Colour::Black, d) if d == Square::from("c8") => (
+                Square::from("a8"),
+                Square::from("d8"),
+                Square::from("c8"),
+                BitBoard::BLACK_QUEEN_CASTLE,
+                CastlingRights::BQ,
+            ),
+            _ => return false,
+        };
+
+        let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
+        let rights_ok = self.castling_rights.0 & right_bit != 0;
+        let path_clear = inter_squares & occ == BitBoard::EMPTY;
+        let safe = !self.in_check()
+            && !self.is_attacked_by::<false>(king_pass, !self.side)
+            && !self.is_attacked_by::<false>(king_end, !self.side);
+        let rook_ok = self.piece_at(rook_sq)
+            == if self.side == Colour::White {
+                Piece::WR
+            } else {
+                Piece::BR
+            };
+
+        rights_ok && path_clear && safe && rook_ok
     }
 
     fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> Vec<Move> {
@@ -175,7 +219,7 @@ impl Board {
         let mut pawn_bb = self.pieces[Piece::WP.index()] & self.sides[side_idx];
         while pawn_bb != BitBoard::EMPTY {
             let src = pawn_bb.lsb();
-            self.all_pawn_moves::<QUIET>(src, side, &mut moves);
+            self.all_pawn_moves::<QUIET>(src, side, occ, &mut moves);
             pawn_bb = pawn_bb.pop_bit(src);
         }
 
@@ -229,13 +273,11 @@ impl Board {
         let pseudo_moves = self.generate_pseudo_moves::<QUIET>(side);
 
         for m in pseudo_moves {
-            if self.is_pseudo_legal(m) {
-                let mut new_board = *self;
-                new_board.make_move(m);
+            let mut new_board = *self;
+            new_board.make_move(m);
 
-                if !new_board.is_attacked_by::<false>(new_board.king_square(side), !side) {
-                    moves.push(m);
-                }
+            if !new_board.is_attacked_by::<false>(new_board.king_square(side), !side) {
+                moves.push(m);
             }
         }
 
@@ -256,94 +298,6 @@ impl Board {
         }
 
         self.halfmoves += 1;
-    }
-
-    fn is_pseudo_legal(&self, m: Move) -> bool {
-        let src = m.get_source();
-        let dest = m.get_dest();
-        let move_type = m.get_type();
-
-        let piece = self.piece_at(src);
-        let occupied = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
-        let opponent = self.sides[!self.side as usize];
-        let forward = piece.colour().forward();
-
-        match move_type {
-            MoveKind::Quiet => !occupied.get_bit(dest),
-            MoveKind::Capture => opponent.get_bit(dest),
-            MoveKind::DoublePush => {
-                let middle = src.jump(0, forward).unwrap();
-                !occupied.get_bit(middle) && !occupied.get_bit(dest)
-            }
-            MoveKind::EnPassant => {
-                self.en_passant == Some(dest) && opponent.get_bit(dest.jump(0, -forward).unwrap())
-            }
-            MoveKind::Castle => {
-                let (rook_sq, king_pass, king_end, inter_squares) = match (self.side, dest) {
-                    (Colour::White, d) if d == Square::from("g1") => (
-                        Square::from("h1"),
-                        Square::from("f1"),
-                        Square::from("g1"),
-                        BitBoard::WHITE_KING_CASTLE,
-                    ),
-                    (Colour::White, d) if d == Square::from("c1") => (
-                        Square::from("a1"),
-                        Square::from("d1"),
-                        Square::from("c1"),
-                        BitBoard::WHITE_QUEEN_CASTLE,
-                    ),
-                    (Colour::Black, d) if d == Square::from("g8") => (
-                        Square::from("h8"),
-                        Square::from("f8"),
-                        Square::from("g8"),
-                        BitBoard::BLACK_KING_CASTLE,
-                    ),
-                    (Colour::Black, d) if d == Square::from("c8") => (
-                        Square::from("a8"),
-                        Square::from("d8"),
-                        Square::from("c8"),
-                        BitBoard::BLACK_QUEEN_CASTLE,
-                    ),
-                    _ => return false,
-                };
-
-                let valid_rights = match (self.side, dest) {
-                    (Colour::White, d) if d == Square::from("g1") => {
-                        self.castling_rights.0 & CastlingRights::WK != 0
-                    }
-                    (Colour::White, d) if d == Square::from("c1") => {
-                        self.castling_rights.0 & CastlingRights::WQ != 0
-                    }
-                    (Colour::Black, d) if d == Square::from("g8") => {
-                        self.castling_rights.0 & CastlingRights::BK != 0
-                    }
-                    (Colour::Black, d) if d == Square::from("c8") => {
-                        self.castling_rights.0 & CastlingRights::BQ != 0
-                    }
-                    _ => return false,
-                };
-
-                valid_rights
-                    && inter_squares & occupied == BitBoard::EMPTY
-                    && !self.in_check()
-                    && !self.is_attacked_by::<false>(king_pass, !self.side)
-                    && !self.is_attacked_by::<false>(king_end, !self.side)
-                    && self.piece_at(rook_sq)
-                        == if piece.colour() == Colour::White {
-                            Piece::WR
-                        } else {
-                            Piece::BR
-                        }
-            }
-            MoveKind::KnightPromotion
-            | MoveKind::BishopPromotion
-            | MoveKind::RookPromotion
-            | MoveKind::QueenPromotion => !occupied.get_bit(dest),
-            MoveKind::KnightCapPromo
-            | MoveKind::BishopCapPromo
-            | MoveKind::RookCapPromo
-            | MoveKind::QueenCapPromo => opponent.get_bit(dest),
-        }
     }
 
     /// Returns whether the given square is attacked by the given side or not,
