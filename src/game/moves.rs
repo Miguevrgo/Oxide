@@ -230,8 +230,7 @@ impl Board {
                     moves.push(Move::new(src, dest, MoveKind::Quiet));
                     if start_rank.get_bit(src) {
                         let dbl = src.jump(0, 2 * forward).unwrap();
-                        let middle = src.jump(0, forward).unwrap();
-                        if !occ.get_bit(middle) && !occ.get_bit(dbl) {
+                        if !occ.get_bit(dbl) {
                             moves.push(Move::new(src, dbl, MoveKind::DoublePush));
                         }
                     }
