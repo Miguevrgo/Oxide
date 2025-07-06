@@ -11,6 +11,8 @@ use crate::game::{
     zobrist::ZHash,
 };
 
+use super::constants::PAWN_ATTACKS;
+
 #[derive(Copy, Clone, Debug)]
 pub struct Board {
     pub pieces: [BitBoard; 6],
@@ -306,49 +308,17 @@ impl Board {
     pub fn is_attacked_by<const CHECK: bool>(&self, square: Square, attacker: Colour) -> bool {
         let idx = square.index();
         let enemy_side = self.sides[attacker as usize];
+        let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
-        // Knights
-        if KNIGHT_ATTACKS[idx] & self.pieces[Piece::WN.index()] & enemy_side != BitBoard::EMPTY {
-            return true;
-        }
-
-        // Kings
-        if !CHECK
-            && KING_ATTACKS[idx] & self.pieces[Piece::WK.index()] & enemy_side != BitBoard::EMPTY
-        {
-            return true;
-        }
-
-        // Rooks
-        let occupied = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
-        let rook_attackers = self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()];
-        if rook_attacks(occupied.0, idx) & rook_attackers & enemy_side != BitBoard::EMPTY {
-            return true;
-        }
-
-        // Bishop
-        let occupied = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
-        let bishop_attackers = self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()];
-        if bishop_attacks(occupied.0, idx) & bishop_attackers & enemy_side != BitBoard::EMPTY {
-            return true;
-        }
-
-        // Pawns
-        let pawn_offsets = if attacker == Colour::White {
-            [[-1, -1], [1, -1]]
-        } else {
-            [[-1, 1], [1, 1]]
-        };
-        for &[dr, df] in &pawn_offsets {
-            if let Some(src) = square.jump(dr, df) {
-                let piece = self.piece_at(src);
-                if piece != Piece::Empty && piece.colour() == attacker && piece.is_pawn() {
-                    return true;
-                }
-            }
-        }
-
-        false
+        ((KNIGHT_ATTACKS[idx] & self.pieces[Piece::WN.index()])
+            | (KING_ATTACKS[idx] & self.pieces[Piece::WK.index()])
+            | (PAWN_ATTACKS[!attacker as usize][idx] & self.pieces[Piece::WP.index()])
+            | (rook_attacks(occ.0, idx)
+                & (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()]))
+            | (bishop_attacks(occ.0, idx)
+                & (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])))
+            & enemy_side
+            != BitBoard::EMPTY
     }
 
     pub fn is_king_pawn(&self) -> bool {
