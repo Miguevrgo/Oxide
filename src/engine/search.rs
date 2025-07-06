@@ -297,9 +297,7 @@ fn quiescence(
     cache: &mut EvalTable,
     data: &mut SearchData,
 ) -> i32 {
-    data.nodes += 1;
     let key = board.hash.0;
-
     if let Some(entry) = data.tt.get(key) {
         let tt_score = entry.value;
         match entry.bound() {
@@ -310,63 +308,62 @@ fn quiescence(
         }
     }
 
-    let eval = board.evaluate(cache);
-    if eval >= beta {
+    let mut best_eval = board.evaluate(cache);
+    if best_eval >= beta {
         data.tt.insert(
             key,
             TTEntry {
-                value: eval,
+                value: best_eval,
                 best_move: Move::default(),
                 flags: TTEntry::make_flags(0, Bound::Lower),
             },
         );
-        return eval;
+        return best_eval;
     }
 
-    alpha = alpha.max(eval);
+    alpha = alpha.max(best_eval);
 
     let mut moves = board.generate_legal_moves::<false>();
     moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
 
     let mut best_move = Move::default();
-    let mut best_score = eval;
     let mut bound = Bound::Upper;
 
+    data.ply += 1;
     for m in moves {
         let mut new_board = *board;
         new_board.make_move(m);
+        data.nodes += 1;
 
-        data.push(new_board.hash.0);
         let score = -quiescence(&new_board, -beta, -alpha, cache, data);
-        data.pop();
 
-        if score > best_score {
-            best_score = score;
+        if score > best_eval {
+            best_eval = score;
             best_move = m;
+            alpha = alpha.max(score);
         }
 
         if score >= beta {
             bound = Bound::Lower;
             break;
         }
-
-        alpha = alpha.max(score);
     }
+    data.ply -= 1;
 
-    if best_score > alpha {
+    if best_eval > alpha {
         bound = Bound::Exact;
     }
 
     data.tt.insert(
         key,
         TTEntry {
-            value: best_score,
+            value: best_eval,
             best_move,
             flags: TTEntry::make_flags(0, bound),
         },
     );
 
-    best_score
+    best_eval
 }
 
 #[inline]
