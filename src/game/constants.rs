@@ -9,6 +9,141 @@ pub const PIECE_VALUES: [i32; 6] = [
     2000, // King
 ];
 
+pub const PAWN_ATTACKS: [[BitBoard; 64]; 2] = [
+    [
+        BitBoard(0x0000000000000200), // a1
+        BitBoard(0x0000000000000500), // b1
+        BitBoard(0x0000000000000a00), // c1
+        BitBoard(0x0000000000001400), // d1
+        BitBoard(0x0000000000002800), // e1
+        BitBoard(0x0000000000005000), // f1
+        BitBoard(0x000000000000a000), // g1
+        BitBoard(0x0000000000004000), // h1
+        BitBoard(0x0000000000020000), // a2
+        BitBoard(0x0000000000050000), // b2
+        BitBoard(0x00000000000a0000), // c2
+        BitBoard(0x0000000000140000), // d2
+        BitBoard(0x0000000000280000), // e2
+        BitBoard(0x0000000000500000), // f2
+        BitBoard(0x0000000000a00000), // g2
+        BitBoard(0x0000000000400000), // h2
+        BitBoard(0x0000000002000000), // a3
+        BitBoard(0x0000000005000000), // b3
+        BitBoard(0x000000000a000000), // c3
+        BitBoard(0x0000000014000000), // d3
+        BitBoard(0x0000000028000000), // e3
+        BitBoard(0x0000000050000000), // f3
+        BitBoard(0x00000000a0000000), // g3
+        BitBoard(0x0000000040000000), // h3
+        BitBoard(0x0000000200000000), // a4
+        BitBoard(0x0000000500000000), // b4
+        BitBoard(0x0000000a00000000), // c4
+        BitBoard(0x0000001400000000), // d4
+        BitBoard(0x0000002800000000), // e4
+        BitBoard(0x0000005000000000), // f4
+        BitBoard(0x000000a000000000), // g4
+        BitBoard(0x0000004000000000), // h4
+        BitBoard(0x0000020000000000), // a5
+        BitBoard(0x0000050000000000), // b5
+        BitBoard(0x00000a0000000000), // c5
+        BitBoard(0x0000140000000000), // d5
+        BitBoard(0x0000280000000000), // e5
+        BitBoard(0x0000500000000000), // f5
+        BitBoard(0x0000a00000000000), // g5
+        BitBoard(0x0000400000000000), // h5
+        BitBoard(0x0002000000000000), // a6
+        BitBoard(0x0005000000000000), // b6
+        BitBoard(0x000a000000000000), // c6
+        BitBoard(0x0014000000000000), // d6
+        BitBoard(0x0028000000000000), // e6
+        BitBoard(0x0050000000000000), // f6
+        BitBoard(0x00a0000000000000), // g6
+        BitBoard(0x0040000000000000), // h6
+        BitBoard(0x0200000000000000), // a7
+        BitBoard(0x0500000000000000), // b7
+        BitBoard(0x0a00000000000000), // c7
+        BitBoard(0x1400000000000000), // d7
+        BitBoard(0x2800000000000000), // e7
+        BitBoard(0x5000000000000000), // f7
+        BitBoard(0xa000000000000000), // g7
+        BitBoard(0x4000000000000000), // h7
+        BitBoard(0x0000000000000000), // a8
+        BitBoard(0x0000000000000000), // b8
+        BitBoard(0x0000000000000000), // c8
+        BitBoard(0x0000000000000000), // d8
+        BitBoard(0x0000000000000000), // e8
+        BitBoard(0x0000000000000000), // f8
+        BitBoard(0x0000000000000000), // g8
+        BitBoard(0x0000000000000000), // h8
+    ],
+    [
+        BitBoard(0x0000000000000000), // a1
+        BitBoard(0x0000000000000000), // b1
+        BitBoard(0x0000000000000000), // c1
+        BitBoard(0x0000000000000000), // d1
+        BitBoard(0x0000000000000000), // e1
+        BitBoard(0x0000000000000000), // f1
+        BitBoard(0x0000000000000000), // g1
+        BitBoard(0x0000000000000000), // h1
+        BitBoard(0x0000000000000002), // a2
+        BitBoard(0x0000000000000005), // b2
+        BitBoard(0x000000000000000a), // c2
+        BitBoard(0x0000000000000014), // d2
+        BitBoard(0x0000000000000028), // e2
+        BitBoard(0x0000000000000050), // f2
+        BitBoard(0x00000000000000a0), // g2
+        BitBoard(0x0000000000000040), // h2
+        BitBoard(0x0000000000000200), // a3
+        BitBoard(0x0000000000000500), // b3
+        BitBoard(0x0000000000000a00), // c3
+        BitBoard(0x0000000000001400), // d3
+        BitBoard(0x0000000000002800), // e3
+        BitBoard(0x0000000000005000), // f3
+        BitBoard(0x000000000000a000), // g3
+        BitBoard(0x0000000000004000), // h3
+        BitBoard(0x0000000000020000), // a4
+        BitBoard(0x0000000000050000), // b4
+        BitBoard(0x00000000000a0000), // c4
+        BitBoard(0x0000000000140000), // d4
+        BitBoard(0x0000000000280000), // e4
+        BitBoard(0x0000000000500000), // f4
+        BitBoard(0x0000000000a00000), // g4
+        BitBoard(0x0000000000400000), // h4
+        BitBoard(0x0000000002000000), // a5
+        BitBoard(0x0000000005000000), // b5
+        BitBoard(0x000000000a000000), // c5
+        BitBoard(0x0000000014000000), // d5
+        BitBoard(0x0000000028000000), // e5
+        BitBoard(0x0000000050000000), // f5
+        BitBoard(0x00000000a0000000), // g5
+        BitBoard(0x0000000040000000), // h5
+        BitBoard(0x0000000200000000), // a6
+        BitBoard(0x0000000500000000), // b6
+        BitBoard(0x0000000a00000000), // c6
+        BitBoard(0x0000001400000000), // d6
+        BitBoard(0x0000002800000000), // e6
+        BitBoard(0x0000005000000000), // f6
+        BitBoard(0x000000a000000000), // g6
+        BitBoard(0x0000004000000000), // h6
+        BitBoard(0x0000020000000000), // a7
+        BitBoard(0x0000050000000000), // b7
+        BitBoard(0x00000a0000000000), // c7
+        BitBoard(0x0000140000000000), // d7
+        BitBoard(0x0000280000000000), // e7
+        BitBoard(0x0000500000000000), // f7
+        BitBoard(0x0000a00000000000), // g7
+        BitBoard(0x0000400000000000), // h7
+        BitBoard(0x0002000000000000), // a8
+        BitBoard(0x0005000000000000), // b8
+        BitBoard(0x000a000000000000), // c8
+        BitBoard(0x0014000000000000), // d8
+        BitBoard(0x0028000000000000), // e8
+        BitBoard(0x0050000000000000), // f8
+        BitBoard(0x00a0000000000000), // g8
+        BitBoard(0x0040000000000000), // h8
+    ],
+];
+
 pub const KNIGHT_ATTACKS: [BitBoard; 64] = [
     BitBoard(0x0000000000020400), // a1
     BitBoard(0x0000000000050800), // b1
