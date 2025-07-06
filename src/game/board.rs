@@ -467,6 +467,118 @@ impl Board {
         eval * mat / 1024
     }
 
+    pub fn see(&self, m: Move, threshold: i32) -> bool {
+        let src = m.get_source();
+        let dest = m.get_dest();
+        let mt = m.get_type();
+
+        if mt == MoveKind::Castle {
+            return true;
+        }
+
+        let vic = if m.get_type().is_promotion() {
+            mt.get_promotion(self.side)
+        } else {
+            self.piece_at(src)
+        };
+
+        let mut move_value = if mt.is_capture() {
+            if mt == MoveKind::EnPassant {
+                PIECE_VALUES[Piece::WP.index()]
+            } else {
+                PIECE_VALUES[self.piece_at(dest).index()]
+            }
+        } else {
+            0
+        };
+
+        if mt.is_promotion() {
+            move_value += PIECE_VALUES[vic.index()] - PIECE_VALUES[Piece::WP.index()];
+        }
+
+        let mut balance = move_value - threshold;
+
+        if balance < 0 {
+            return false; // We are already losing
+        } else {
+            balance -= PIECE_VALUES[vic.index()];
+            if balance >= 0 {
+                return true; // Even trade
+            }
+        }
+
+        let diagonal = self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()];
+        let normal = self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()];
+
+        let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
+        let mut occs = occ.pop_bit(src).set_bit(dest);
+        if mt == MoveKind::EnPassant {
+            let ep_dest = self
+                .en_passant
+                .unwrap()
+                .jump(0, (!self.side).forward())
+                .unwrap();
+            occs = occs.pop_bit(ep_dest);
+        }
+
+        let idx = dest.index();
+        let mut attackers = ((KNIGHT_ATTACKS[idx] & self.pieces[Piece::WN.index()])
+            | (KING_ATTACKS[idx] & self.pieces[Piece::WK.index()])
+            | (PAWN_ATTACKS[Colour::White as usize][idx] & self.pieces[Piece::WP.index()])
+            | (PAWN_ATTACKS[Colour::Black as usize][idx] & self.pieces[Piece::WP.index()])
+            | (rook_attacks(occs.0, idx)
+                & (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()]))
+            | (bishop_attacks(occs.0, idx)
+                & (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])))
+            & occs;
+
+        let mut stm = !self.side;
+
+        loop {
+            let own_attackers = attackers & self.sides[stm as usize];
+            if own_attackers == BitBoard::EMPTY {
+                break;
+            }
+
+            let side_bb = self.sides[stm as usize];
+
+            let att_sq_piece = Piece::COLOUR_PIECES[stm as usize]
+                .iter()
+                .find_map(|&piece| {
+                    let squares = own_attackers & self.pieces[piece.index()] & side_bb;
+                    if squares != BitBoard::EMPTY {
+                        Some((squares.lsb(), piece))
+                    } else {
+                        None
+                    }
+                });
+            let (att_sq, att) = att_sq_piece.unwrap();
+            occs = occs.pop_bit(att_sq);
+
+            if att.is_pawn() || att.is_bishop() || att.is_queen() {
+                attackers |= bishop_attacks(occs.0, dest.index()) & diagonal;
+            }
+
+            if att.is_rook() || att.is_queen() {
+                attackers |= rook_attacks(occs.0, dest.index()) & normal;
+            }
+
+            attackers &= occs;
+            stm = !stm;
+
+            balance = -balance - 1 - PIECE_VALUES[att.index()];
+            if balance >= 0 {
+                if att.is_king() && attackers & self.sides[stm as usize] != BitBoard::EMPTY {
+                    return self.side == stm;
+                }
+
+                break;
+            }
+        }
+
+        self.side != stm
+    }
+
     pub fn from_fen(state: &str) -> Self {
         let fen: Vec<&str> = state.split_whitespace().take(6).collect();
 

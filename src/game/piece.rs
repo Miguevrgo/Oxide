@@ -54,6 +54,25 @@ impl Piece {
         Piece::BK,
     ];
 
+    pub const COLOUR_PIECES: [[Self; 6]; 2] = [
+        [
+            Piece::WP,
+            Piece::WN,
+            Piece::WB,
+            Piece::WR,
+            Piece::WQ,
+            Piece::WK,
+        ],
+        [
+            Piece::BP,
+            Piece::BN,
+            Piece::BB,
+            Piece::BR,
+            Piece::BQ,
+            Piece::BK,
+        ],
+    ];
+
     /// Creates a `Piece` from an index into `Self::ALL`.
     fn from(index: usize) -> Self {
         Self::ALL[index]
@@ -96,6 +115,14 @@ impl Piece {
 
     pub const fn is_pawn(self) -> bool {
         self as u8 & 0b1110 == 0b0000
+    }
+
+    pub const fn is_bishop(self) -> bool {
+        self as u8 & 0b1110 == 0b0100
+    }
+
+    pub const fn is_queen(self) -> bool {
+        self as u8 & 0b1110 == 0b1000
     }
 
     pub const fn is_rook(self) -> bool {
