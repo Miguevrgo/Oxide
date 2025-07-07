@@ -83,9 +83,11 @@ pub fn find_best_move(
             0
         };
 
-        if best_eval.abs() > MATE - MAX_DEPTH as i32 {
+        if best_eval.abs() >= MATE - i32::from(MAX_DEPTH) {
+            let mate_in = (MATE - best_eval.abs()) / 2;
+            let sign = if best_eval < 0 { "-" } else { "" };
             println!(
-                "info depth {depth} score mate {best_eval} time {time} nodes {nodes} nps {nps}"
+                "info depth {depth} score mate {sign}{mate_in} time {time} nodes {nodes} nps {nps}"
             );
             break;
         } else {
@@ -195,11 +197,7 @@ fn negamax(
 
     let mut moves = board.generate_legal_moves::<true>();
     if moves.is_empty() {
-        return if board.in_check() {
-            -MATE - depth as i32
-        } else {
-            DRAW
-        };
+        return i32::from(board.in_check()) * (data.ply as i32 - MATE);
     }
 
     moves
