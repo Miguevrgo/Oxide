@@ -21,6 +21,9 @@ pub const RFP_DEPTH: u8 = 6;
 pub const LMR_DEPTH: u8 = 3;
 pub const LMR_THRESHOLD: usize = 3;
 
+pub const RAZOR_DEPTH: u8 = 3;
+pub const RAZOR_MARGIN: i32 = 420;
+
 pub fn find_best_move(
     board: &Board,
     max_depth: Option<u8>,
@@ -171,32 +174,36 @@ fn negamax(
         return DRAW;
     }
 
-    // Null Move Pruning
-    if depth > NMP_MIN_DEPTH && !board.in_check() && !board.is_king_pawn() {
-        let mut null_board = *board;
-        null_board.make_null_move();
-        let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
-        let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, cache, data);
-        if null_score >= beta {
-            return null_score;
+    if !board.in_check() && !board.is_king_pawn() {
+        // Reverse Futility pruning
+        let static_eval = board.evaluate(cache);
+        let pv_node = beta > alpha + 1;
+        data.ply_data[data.ply].eval = static_eval;
+        let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
+        let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
+
+        if depth <= RFP_DEPTH && !pv_node && beta < MATE && static_eval - rfp_margin >= beta {
+            return static_eval;
         }
-    }
 
-    // Reverse Futility pruning
-    let static_eval = board.evaluate(cache);
-    let pv_node = beta > alpha + 1;
-    data.ply_data[data.ply].eval = static_eval;
-    let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
-    let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
+        // Razoring
+        if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
+            let qeval = quiescence(board, alpha, beta, cache, data);
+            if qeval < alpha {
+                return qeval;
+            }
+        }
 
-    if depth <= RFP_DEPTH
-        && !pv_node
-        && beta < MATE
-        && static_eval - rfp_margin >= beta
-        && !board.is_king_pawn()
-        && !board.in_check()
-    {
-        return static_eval;
+        // Null Move Pruning
+        if depth > NMP_MIN_DEPTH {
+            let mut null_board = *board;
+            null_board.make_null_move();
+            let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
+            let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, cache, data);
+            if null_score >= beta {
+                return null_score;
+            }
+        }
     }
 
     let mut moves = board.generate_legal_moves::<true>();
