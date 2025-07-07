@@ -18,8 +18,8 @@ pub const NMP_BASE_REDUCTION: u8 = 4;
 pub const NMP_DIVISOR: u8 = 4;
 
 pub const RFP_DEPTH: u8 = 6;
-pub const LMR_DEPTH: u8 = 3;
-pub const LMR_THRESHOLD: usize = 3;
+pub const LMR_DEPTH: u8 = 2;
+pub const LMR_THRESHOLD: usize = 2;
 
 pub const RAZOR_DEPTH: u8 = 3;
 pub const RAZOR_MARGIN: i32 = 420;
@@ -195,7 +195,7 @@ fn negamax(
         }
 
         // Null Move Pruning
-        if depth > NMP_MIN_DEPTH {
+        if depth >= NMP_MIN_DEPTH {
             let mut null_board = *board;
             null_board.make_null_move();
             let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
