@@ -58,7 +58,7 @@ impl TranspositionTable {
     }
 }
 
-pub const MAX_PLY: usize = 256;
+pub const MAX_PLY: usize = 512;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlyData {
