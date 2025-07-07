@@ -136,7 +136,7 @@ fn aspiration_window(
 
 fn negamax(
     board: &Board,
-    depth: u8,
+    mut depth: u8,
     mut alpha: i32,
     beta: i32,
     cache: &mut EvalTable,
@@ -157,8 +157,12 @@ fn negamax(
         }
     }
 
-    if data.stack.len() > 6 && (board.is_draw() || data.is_repetition(key, false)) {
-        return DRAW;
+    if data.ply > 0 {
+        if board.is_draw() || data.is_repetition(key, false) {
+            return DRAW;
+        }
+
+        depth += u8::from(board.in_check());
     }
 
     if depth == 0 {
