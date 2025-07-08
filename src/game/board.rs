@@ -12,6 +12,7 @@ use crate::game::{
 };
 
 use super::constants::PAWN_ATTACKS;
+use super::moves::MoveList;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Board {
@@ -212,8 +213,8 @@ impl Board {
         rights_ok && path_clear && safe && rook_ok
     }
 
-    fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> Vec<Move> {
-        let mut moves = Vec::with_capacity(64);
+    fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
+        let mut moves = MoveList::new();
         let side_idx = side as usize;
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
@@ -268,22 +269,20 @@ impl Board {
         moves
     }
 
-    pub fn generate_legal_moves<const QUIET: bool>(&self) -> Vec<Move> {
-        let mut moves = Vec::new();
-        let side = self.side;
+    pub fn generate_legal_moves<const QUIET: bool>(&self) -> MoveList {
+        let mut legal = MoveList::new();
+        let pseudo = self.generate_pseudo_moves::<QUIET>(self.side);
 
-        let pseudo_moves = self.generate_pseudo_moves::<QUIET>(side);
-
-        for m in pseudo_moves {
+        for m in pseudo {
             let mut new_board = *self;
             new_board.make_move(m);
 
-            if !new_board.is_attacked_by::<false>(new_board.king_square(side), !side) {
-                moves.push(m);
+            if !new_board.is_attacked_by::<false>(new_board.king_square(self.side), !self.side) {
+                legal.push(m);
             }
         }
 
-        moves
+        legal
     }
 
     pub fn in_check(&self) -> bool {

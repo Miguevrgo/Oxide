@@ -22,6 +22,8 @@ const DST: u16 = 0b0000_1111_1100_0000;
 const TYPE: u16 = 0b1111_0000_0000_0000;
 
 impl Move {
+    pub const NULL: Self = Self(0);
+
     pub fn new(src: Square, dest: Square, kind: MoveKind) -> Self {
         Self((src.index() as u16) | ((dest.index() as u16) << 6) | ((kind as u16) << 12))
     }
@@ -128,7 +130,7 @@ impl Board {
         src: Square,
         occ: u64,
         attacks_fn: fn(u64, usize) -> BitBoard,
-        moves: &mut Vec<Move>,
+        moves: &mut MoveList,
     ) {
         let attacks = attacks_fn(occ, src.index());
 
@@ -149,7 +151,7 @@ impl Board {
         }
     }
 
-    pub fn all_king_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut Vec<Move>) {
+    pub fn all_king_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut MoveList) {
         let attacks = KING_ATTACKS[src.index()];
 
         if QUIET {
@@ -182,12 +184,7 @@ impl Board {
         }
     }
 
-    pub fn all_knight_moves<const QUIET: bool>(
-        &self,
-        src: Square,
-        occ: u64,
-        moves: &mut Vec<Move>,
-    ) {
+    pub fn all_knight_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut MoveList) {
         let attacks = KNIGHT_ATTACKS[src.index()];
 
         if QUIET {
@@ -212,7 +209,7 @@ impl Board {
         src: Square,
         colour: Colour,
         occ: BitBoard,
-        moves: &mut Vec<Move>,
+        moves: &mut MoveList,
     ) {
         let forward = colour.forward();
         let start_rank = BitBoard::START_RANKS[colour as usize];
@@ -257,5 +254,70 @@ impl Board {
                 }
             }
         }
+    }
+}
+
+pub struct MoveList {
+    pub moves: [Move; MoveList::SIZE],
+    len: usize,
+}
+
+impl Default for MoveList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MoveList {
+    // Pointer width 64
+    pub const SIZE: usize = 252;
+
+    #[inline(always)]
+    pub const fn new() -> Self {
+        Self {
+            moves: [Move::NULL; Self::SIZE],
+            len: 0,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    #[inline(always)]
+    pub fn as_mut_slice(&mut self) -> &mut [Move] {
+        &mut self.moves[..self.len]
+    }
+    pub fn as_slice(&self) -> &[Move] {
+        &self.moves[..self.len]
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn push(&mut self, m: Move) {
+        self.moves[self.len] = m;
+        self.len += 1;
+    }
+}
+
+impl IntoIterator for MoveList {
+    type Item = Move;
+    type IntoIter = core::iter::Take<core::array::IntoIter<Move, { MoveList::SIZE }>>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.moves.into_iter().take(self.len)
+    }
+}
+
+impl<'a> IntoIterator for &'a MoveList {
+    type Item = Move;
+    type IntoIter = core::iter::Copied<core::slice::Iter<'a, Move>>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.moves[..self.len].iter().copied()
     }
 }

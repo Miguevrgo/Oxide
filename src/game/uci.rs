@@ -1,3 +1,4 @@
+use crate::engine::network::EvalTable;
 use crate::engine::search::find_best_move;
 use crate::engine::tables::SearchData;
 use crate::game::piece::Colour;
@@ -108,6 +109,7 @@ impl UCIEngine {
 
     fn go(&mut self, args: &[&str]) {
         self.data.tt.tt.clear(); // TODO:
+        self.data.cache = EvalTable::default();
         let mut depth: Option<u8> = None;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
@@ -179,8 +181,8 @@ impl UCIEngine {
         }
         .min(MAX_TIME);
 
-        let best_move = find_best_move(&self.board, depth, play_time, &mut self.data);
-        println!("bestmove {best_move}");
+        find_best_move(&self.board, depth, play_time, &mut self.data);
+        println!("bestmove {}", self.data.best_move);
     }
 
     fn parse_move(&self, board: &Board, move_str: &str) -> Move {
