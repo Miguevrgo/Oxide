@@ -16,7 +16,9 @@ pub const NMP_MIN_DEPTH: u8 = 3;
 pub const NMP_BASE_REDUCTION: u8 = 4;
 pub const NMP_DIVISOR: u8 = 4;
 
-pub const RFP_DEPTH: u8 = 6;
+pub const RFP_DEPTH: u8 = 8;
+pub const RFP_IMPROVING: i32 = 50;
+pub const RFP_MARGIN: i32 = 90;
 pub const LMR_DEPTH: u8 = 2;
 pub const LMR_THRESHOLD: usize = 2;
 
@@ -166,14 +168,14 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
     }
 
-    if !in_check && !board.is_king_pawn() {
+    if !in_check && !pv_node {
         // Reverse Futility pruning
         let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
         let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
-        let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
+        let rfp_margin = RFP_MARGIN * depth as i32 - RFP_IMPROVING * improving as i32;
 
-        if depth <= RFP_DEPTH && !pv_node && beta < MATE && static_eval - rfp_margin >= beta {
+        if depth <= RFP_DEPTH && static_eval - rfp_margin >= beta {
             return static_eval;
         }
 
@@ -186,7 +188,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         // Null Move Pruning
-        if depth >= NMP_MIN_DEPTH {
+        if depth >= NMP_MIN_DEPTH && !board.is_king_pawn() {
             let mut null_board = *board;
             null_board.make_null_move();
             let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
@@ -195,6 +197,11 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                 return null_score;
             }
         }
+    }
+
+    // Internal Iterative Reduction
+    if depth >= 4 && tt_move.is_none() {
+        depth -= 1;
     }
 
     let mut moves = board.generate_legal_moves::<true>();
@@ -206,7 +213,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         .as_mut_slice()
         .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move, data.ply, data)));
 
-    let mut best_move: Option<Move> = None;
+    let mut best_move = Move::NULL;
     let old_alpha = alpha;
     let mut max_score = -INF;
 
@@ -247,7 +254,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
         if score > max_score {
             max_score = score;
-            best_move = Some(*m);
+            best_move = *m;
         }
 
         alpha = alpha.max(score);
@@ -277,7 +284,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         key,
         TTEntry {
             value: max_score,
-            best_move: best_move.unwrap_or_default(),
+            best_move,
             flags: TTEntry::make_flags(depth, bound),
         },
     );
