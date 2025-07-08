@@ -1,10 +1,9 @@
-use crate::engine::network::EvalTable;
 use crate::engine::tables::{Bound, SearchData, TTEntry};
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
 
-const INF: i32 = 2 << 16;
+pub const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
 const MAX_DEPTH: u8 = 32;
@@ -29,39 +28,43 @@ pub fn find_best_move(
     max_depth: Option<u8>,
     time_play: u128,
     data: &mut SearchData,
-) -> Move {
-    let mut best_move = Move::default();
-    let mut cache = EvalTable::default();
-    let mut best_eval = -INF;
+) {
     let mut depth = 1;
     let mut stop = false;
     let final_depth = max_depth.unwrap_or(MAX_DEPTH);
+    data.best_move = Move::NULL;
     data.push(board.hash.0);
     data.nodes = 0;
     data.timing = Instant::now();
 
     let mut moves = board.generate_legal_moves::<true>();
-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
+    moves
+        .as_mut_slice()
+        .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
 
     while depth <= final_depth && !stop {
         if let Some(entry) = data.tt.get(board.hash.0) {
-            if let Some(i) = moves.iter().position(|&m| m == entry.best_move) {
-                moves.swap(0, i);
+            if let Some(i) = moves
+                .as_mut_slice()
+                .iter()
+                .position(|&m| m == entry.best_move)
+            {
+                moves.as_mut_slice().swap(0, i);
             }
         }
 
         let mut local_best_eval = -INF;
         let mut local_best_move = Move::default();
 
-        for &m in &moves {
+        for m in &moves {
             let mut new_board = *board;
             new_board.make_move(m);
             data.push(new_board.hash.0);
 
             let eval = if depth < 5 {
-                -negamax(&new_board, depth - 1, -INF, INF, &mut cache, data)
+                -negamax(&new_board, depth - 1, -INF, INF, data)
             } else {
-                aspiration_window(&new_board, depth - 1, best_eval, &mut cache, data)
+                aspiration_window(&new_board, depth - 1, data.eval, data)
             };
 
             data.pop();
@@ -72,8 +75,8 @@ pub fn find_best_move(
             }
         }
 
-        best_eval = local_best_eval;
-        best_move = local_best_move;
+        data.eval = local_best_eval;
+        data.best_move = local_best_move;
 
         let time = data.timing.elapsed().as_millis();
         if time * 2 > time_play && depth >= 4 && final_depth == MAX_DEPTH {
@@ -86,37 +89,32 @@ pub fn find_best_move(
             0
         };
 
-        if best_eval.abs() >= MATE - i32::from(MAX_DEPTH) {
-            let mate_in = (MATE - best_eval.abs()) / 2;
-            let sign = if best_eval < 0 { "-" } else { "" };
+        if data.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
+            let mate_in = (MATE - data.eval.abs()) / 2;
+            let sign = if data.eval < 0 { "-" } else { "" };
             println!(
                 "info depth {depth} score mate {sign}{mate_in} time {time} nodes {nodes} nps {nps}"
             );
             break;
         } else {
-            println!("info depth {depth} score cp {best_eval} time {time} nodes {nodes} nps {nps}");
+            println!(
+                "info depth {depth} score cp {} time {time} nodes {nodes} nps {nps}",
+                data.eval
+            );
         }
 
         depth += 1;
     }
-
-    best_move
 }
 
-fn aspiration_window(
-    board: &Board,
-    max_depth: u8,
-    estimate: i32,
-    cache: &mut EvalTable,
-    data: &mut SearchData,
-) -> i32 {
+fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut SearchData) -> i32 {
     let mut delta = ASPIRATION_DELTA;
     let mut alpha = estimate - delta;
     let mut beta = estimate + delta;
     let mut depth = max_depth;
 
     loop {
-        let score = -negamax(board, depth, -beta, -alpha, cache, data);
+        let score = -negamax(board, depth, -beta, -alpha, data);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -137,20 +135,28 @@ fn aspiration_window(
     }
 }
 
-fn negamax(
-    board: &Board,
-    mut depth: u8,
-    mut alpha: i32,
-    beta: i32,
-    cache: &mut EvalTable,
-    data: &mut SearchData,
-) -> i32 {
-    data.nodes += 1;
+fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
+    let in_check = board.in_check();
     let key = board.hash.0;
-    let tt_move = data.tt.get(key).map(|entry| entry.best_move);
 
+    if data.ply > 0 {
+        if board.is_draw() || data.is_repetition(key, false) {
+            return DRAW;
+        }
+        // Check Extensions
+        depth += u8::from(in_check);
+    }
+
+    if depth == 0 {
+        return quiescence(board, alpha, beta, data);
+    } else if board.is_draw() {
+        return DRAW;
+    }
+
+    let pv_node = beta > alpha + 1;
+    let tt_move = data.tt.get(key).map(|entry| entry.best_move);
     if let Some(entry) = data.tt.get(key) {
-        if entry.depth() >= depth {
+        if entry.depth() >= depth && !pv_node {
             match entry.bound() {
                 Bound::Exact => return entry.value,
                 Bound::Lower if entry.value >= beta => return entry.value,
@@ -160,24 +166,9 @@ fn negamax(
         }
     }
 
-    if data.ply > 0 {
-        if board.is_draw() || data.is_repetition(key, false) {
-            return DRAW;
-        }
-
-        depth += u8::from(board.in_check());
-    }
-
-    if depth == 0 {
-        return quiescence(board, alpha, beta, cache, data);
-    } else if board.is_draw() {
-        return DRAW;
-    }
-
-    if !board.in_check() && !board.is_king_pawn() {
+    if !in_check && !board.is_king_pawn() {
         // Reverse Futility pruning
-        let static_eval = board.evaluate(cache);
-        let pv_node = beta > alpha + 1;
+        let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
         let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
         let rfp_margin = 100 * depth as i32 - if improving { 50 } else { 0 };
@@ -188,7 +179,7 @@ fn negamax(
 
         // Razoring
         if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
-            let qeval = quiescence(board, alpha, beta, cache, data);
+            let qeval = quiescence(board, alpha, beta, data);
             if qeval < alpha {
                 return qeval;
             }
@@ -199,7 +190,7 @@ fn negamax(
             let mut null_board = *board;
             null_board.make_null_move();
             let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
-            let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, cache, data);
+            let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, data);
             if null_score >= beta {
                 return null_score;
             }
@@ -208,26 +199,28 @@ fn negamax(
 
     let mut moves = board.generate_legal_moves::<true>();
     if moves.is_empty() {
-        return i32::from(board.in_check()) * (data.ply as i32 - MATE);
+        return i32::from(in_check) * (data.ply as i32 - MATE);
     }
 
     moves
+        .as_mut_slice()
         .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, tt_move, data.ply, data)));
 
     let mut best_move: Option<Move> = None;
     let old_alpha = alpha;
     let mut max_score = -INF;
 
-    for (i, m) in moves.iter().enumerate() {
+    for (i, m) in moves.as_mut_slice().iter().enumerate() {
         let mut new_board = *board;
         new_board.make_move(*m);
         data.push(new_board.hash.0);
+        data.nodes += 1;
 
         let mut score;
 
         // Principal Variation Search
         if i == 0 {
-            score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
+            score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
         } else {
             // Late Move Reductions // TODO ln
             if depth >= LMR_DEPTH
@@ -236,25 +229,18 @@ fn negamax(
                 && !m.get_type().is_promotion()
             {
                 let reduction = (depth as i32 / 3).min(2) as u8;
-                score = -negamax(
-                    &new_board,
-                    depth - 1 - reduction,
-                    -alpha - 1,
-                    -alpha,
-                    cache,
-                    data,
-                );
+                score = -negamax(&new_board, depth - 1 - reduction, -alpha - 1, -alpha, data);
 
                 if score > alpha {
-                    score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, cache, data);
+                    score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, data);
                     if score > alpha {
-                        score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
+                        score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
                     }
                 }
             } else {
-                score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, cache, data);
+                score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, data);
                 if score > alpha {
-                    score = -negamax(&new_board, depth - 1, -beta, -alpha, cache, data);
+                    score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
                 }
             }
         }
@@ -299,13 +285,7 @@ fn negamax(
     max_score
 }
 
-fn quiescence(
-    board: &Board,
-    mut alpha: i32,
-    beta: i32,
-    cache: &mut EvalTable,
-    data: &mut SearchData,
-) -> i32 {
+fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
     let key = board.hash.0;
     if let Some(entry) = data.tt.get(key) {
         let tt_score = entry.value;
@@ -317,7 +297,7 @@ fn quiescence(
         }
     }
 
-    let mut best_eval = board.evaluate(cache);
+    let mut best_eval = board.evaluate(&mut data.cache);
     if best_eval >= beta {
         data.tt.insert(
             key,
@@ -333,7 +313,9 @@ fn quiescence(
     alpha = alpha.max(best_eval);
 
     let mut moves = board.generate_legal_moves::<false>();
-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
+    moves
+        .as_mut_slice()
+        .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
 
     let mut best_move = Move::default();
     let mut bound = Bound::Upper;
@@ -344,7 +326,7 @@ fn quiescence(
         new_board.make_move(m);
         data.nodes += 1;
 
-        let score = -quiescence(&new_board, -beta, -alpha, cache, data);
+        let score = -quiescence(&new_board, -beta, -alpha, data);
 
         if score > best_eval {
             best_eval = score;

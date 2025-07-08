@@ -20,7 +20,7 @@ pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
     if depth == 1 {
         for m in &moves {
             let mut new_board = *board;
-            new_board.make_move(*m);
+            new_board.make_move(m);
             let count = perft_with_moves(&mut new_board, depth - 1);
             println!("{m}: {count}");
             total += count;
@@ -28,7 +28,7 @@ pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
     } else {
         for m in &moves {
             let mut new_board = *board;
-            new_board.make_move(*m);
+            new_board.make_move(m);
             total += perft_with_moves(&mut new_board, depth - 1);
         }
     }
@@ -93,7 +93,7 @@ impl Board {
                 break;
             }
 
-            let moves_chunk = moves[start_idx..end_idx].to_vec();
+            let moves_chunk: Vec<Move> = moves.as_slice()[start_idx..end_idx].to_vec();
             let board_clone = *self;
             let tx_clone = tx.clone();
 

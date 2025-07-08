@@ -1,5 +1,8 @@
+use crate::engine::search::INF;
 use crate::game::moves::Move;
 use std::{collections::HashMap, time::Instant};
+
+use super::network::EvalTable;
 
 /// Transposition Table
 #[derive(Copy, Clone)]
@@ -70,9 +73,14 @@ pub struct SearchData {
     pub timing: Instant,
     pub ply: usize,
     pub nodes: u64,
+    pub best_move: Move,
+    pub eval: i32,
+
+    // Tables + Ordering
     pub stack: Vec<u64>,
     pub ply_data: [PlyData; MAX_PLY],
     pub tt: TranspositionTable,
+    pub cache: EvalTable,
 }
 
 impl SearchData {
@@ -81,9 +89,12 @@ impl SearchData {
             timing: Instant::now(),
             ply: 0,
             nodes: 0,
+            best_move: Move::NULL,
+            eval: -INF,
             stack: Vec::with_capacity(16),
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
             tt: TranspositionTable::new(),
+            cache: EvalTable::default(),
         }
     }
 
