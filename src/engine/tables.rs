@@ -81,6 +81,7 @@ pub struct SearchData {
     pub ply_data: [PlyData; MAX_PLY],
     pub tt: TranspositionTable,
     pub cache: EvalTable,
+    pub history: [[[i16; 64]; 64]; 2], // [colour][src][dest]
 }
 
 impl SearchData {
@@ -95,6 +96,7 @@ impl SearchData {
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
             tt: TranspositionTable::new(),
             cache: EvalTable::default(),
+            history: [[[0; 64]; 64]; 2],
         }
     }
 

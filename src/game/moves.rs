@@ -28,11 +28,11 @@ impl Move {
         Self((src.index() as u16) | ((dest.index() as u16) << 6) | ((kind as u16) << 12))
     }
 
-    pub fn get_source(self) -> Square {
+    pub const fn get_source(self) -> Square {
         Square::new((self.0 & SRC) as usize)
     }
 
-    pub fn get_dest(self) -> Square {
+    pub const fn get_dest(self) -> Square {
         Square::new(((self.0 & DST) >> 6) as usize)
     }
 
@@ -299,6 +299,25 @@ impl MoveList {
     pub fn push(&mut self, m: Move) {
         self.moves[self.len] = m;
         self.len += 1;
+    }
+
+    pub fn pick(&mut self, scores: &mut [i32; MoveList::SIZE]) -> Option<(Move, i32)> {
+        if self.len == 0 {
+            return None;
+        }
+
+        let (mut best_idx, mut best_score) = (0, i32::MIN);
+
+        if let Some((i, &score)) = (0..self.len).zip(scores.iter()).max_by_key(|&(_, &s)| s) {
+            best_score = score;
+            best_idx = i;
+        }
+
+        self.len -= 1;
+        self.moves.swap(best_idx, self.len);
+        scores.swap(best_idx, self.len);
+
+        Some((self.moves[self.len], best_score))
     }
 }
 

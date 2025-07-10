@@ -58,7 +58,7 @@ impl Square {
     }
 
     /// Returns the index of the square (0-63).
-    pub fn index(&self) -> usize {
+    pub const fn index(&self) -> usize {
         self.0 as usize
     }
 
