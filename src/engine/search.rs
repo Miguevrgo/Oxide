@@ -38,6 +38,7 @@ pub fn find_best_move(
     data.push(board.hash.0);
     data.nodes = 0;
     data.timing = Instant::now();
+    data.ply = 0;
 
     for color in 0..2 {
         for from in 0..64 {
@@ -47,46 +48,12 @@ pub fn find_best_move(
         }
     }
 
-    let mut moves = board.generate_legal_moves::<true>();
-    moves
-        .as_mut_slice()
-        .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
-
     while depth <= final_depth && !stop {
-        if let Some(entry) = data.tt.get(board.hash.0) {
-            if let Some(i) = moves
-                .as_mut_slice()
-                .iter()
-                .position(|&m| m == entry.best_move)
-            {
-                moves.as_mut_slice().swap(0, i);
-            }
-        }
-
-        let mut local_best_eval = -INF;
-        let mut local_best_move = Move::default();
-
-        for m in &moves {
-            let mut new_board = *board;
-            new_board.make_move(m);
-            data.push(new_board.hash.0);
-
-            let eval = if depth < 5 {
-                -negamax(&new_board, depth - 1, -INF, INF, data)
-            } else {
-                aspiration_window(&new_board, depth - 1, data.eval, data)
-            };
-
-            data.pop();
-
-            if eval > local_best_eval {
-                local_best_eval = eval;
-                local_best_move = m;
-            }
-        }
-
-        data.eval = local_best_eval;
-        data.best_move = local_best_move;
+        let eval = if depth < 5 {
+            negamax(board, depth - 1, -INF, INF, data)
+        } else {
+            aspiration_window(board, depth - 1, data.eval, data)
+        };
 
         let time = data.timing.elapsed().as_millis();
         if time * 2 > time_play && depth >= 4 && final_depth == MAX_DEPTH {
@@ -98,6 +65,8 @@ pub fn find_best_move(
         } else {
             0
         };
+
+        data.eval = eval;
 
         if data.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
             let mate_in = (MATE - data.eval.abs()) / 2;
@@ -124,7 +93,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
     let mut depth = max_depth;
 
     loop {
-        let score = -negamax(board, depth, -beta, -alpha, data);
+        let score = negamax(board, depth, -beta, -alpha, data);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -218,7 +187,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
     let mut scores = [0; 252];
 
-    moves.as_mut_slice().iter().enumerate().for_each(|(i, m)| {
+    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
         scores[i] = move_score(m, board, tt_move, data.ply, data);
     });
 
@@ -284,6 +253,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             break;
         }
     }
+
     let bound = if max_score <= old_alpha {
         Bound::Upper
     } else if max_score >= beta {
@@ -300,6 +270,10 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             flags: TTEntry::make_flags(depth, bound),
         },
     );
+
+    if data.ply == 0 {
+        data.best_move = best_move
+    }
 
     max_score
 }
@@ -318,29 +292,23 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
 
     let mut best_eval = board.evaluate(&mut data.cache);
     if best_eval >= beta {
-        data.tt.insert(
-            key,
-            TTEntry {
-                value: best_eval,
-                best_move: Move::default(),
-                flags: TTEntry::make_flags(0, Bound::Lower),
-            },
-        );
         return best_eval;
     }
 
     alpha = alpha.max(best_eval);
 
     let mut moves = board.generate_legal_moves::<false>();
-    moves
-        .as_mut_slice()
-        .sort_unstable_by_key(|m| std::cmp::Reverse(move_score(m, board, None, data.ply, data)));
+    let mut scores = [0; 252];
+    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
+        scores[i] = mvv_lva(*m, board);
+    });
 
     let mut best_move = Move::default();
     let mut bound = Bound::Upper;
 
     data.ply += 1;
-    for m in moves {
+
+    while let Some((m, _)) = moves.pick(&mut scores) {
         let mut new_board = *board;
         new_board.make_move(m);
         data.nodes += 1;
