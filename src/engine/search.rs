@@ -10,7 +10,7 @@ const MAX_DEPTH: u8 = 32;
 
 // Search Parameters
 pub const ASPIRATION_DELTA: i32 = 50;
-pub const ASPIRATION_DELTA_LIMIT: i32 = 200;
+pub const ASPIRATION_DELTA_LIMIT: i32 = 400;
 
 pub const NMP_MIN_DEPTH: u8 = 3;
 pub const NMP_BASE_REDUCTION: u8 = 4;
@@ -93,7 +93,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
     let mut depth = max_depth;
 
     loop {
-        let score = negamax(board, depth, -beta, -alpha, data);
+        let score = negamax(board, depth, alpha, beta, data);
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -106,7 +106,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
             return score;
         }
 
-        delta += delta / 2;
+        delta += delta;
         if delta > ASPIRATION_DELTA_LIMIT {
             alpha = -INF;
             beta = INF;
