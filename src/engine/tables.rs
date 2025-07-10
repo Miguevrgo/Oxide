@@ -71,6 +71,7 @@ pub struct PlyData {
 
 pub struct SearchData {
     pub timing: Instant,
+    pub time_tp: u128,
     pub ply: usize,
     pub nodes: u64,
     pub best_move: Move,
@@ -88,6 +89,7 @@ impl SearchData {
     pub fn new() -> Self {
         Self {
             timing: Instant::now(),
+            time_tp: 0,
             ply: 0,
             nodes: 0,
             best_move: Move::NULL,

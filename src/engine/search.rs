@@ -6,7 +6,7 @@ use std::time::Instant;
 pub const INF: i32 = 2 << 16;
 const MATE: i32 = INF >> 2;
 const DRAW: i32 = 0;
-const MAX_DEPTH: u8 = 32;
+const MAX_DEPTH: u8 = 48;
 
 // Search Parameters
 pub const ASPIRATION_DELTA: i32 = 50;
@@ -25,20 +25,15 @@ pub const LMR_THRESHOLD: usize = 2;
 pub const RAZOR_DEPTH: u8 = 3;
 pub const RAZOR_MARGIN: i32 = 420;
 
-pub fn find_best_move(
-    board: &Board,
-    max_depth: Option<u8>,
-    time_play: u128,
-    data: &mut SearchData,
-) {
+pub fn find_best_move(board: &Board, max_depth: Option<u8>, data: &mut SearchData) {
     let mut depth = 1;
     let mut stop = false;
     let final_depth = max_depth.unwrap_or(MAX_DEPTH);
     data.best_move = Move::NULL;
     data.push(board.hash.0);
     data.nodes = 0;
-    data.timing = Instant::now();
     data.ply = 0;
+    data.timing = Instant::now();
 
     for color in 0..2 {
         for from in 0..64 {
@@ -49,14 +44,14 @@ pub fn find_best_move(
     }
 
     while depth <= final_depth && !stop {
-        let eval = if depth < 5 {
+        data.eval = if depth < 5 {
             negamax(board, depth - 1, -INF, INF, data)
         } else {
             aspiration_window(board, depth - 1, data.eval, data)
         };
 
         let time = data.timing.elapsed().as_millis();
-        if time * 2 > time_play && depth >= 4 && final_depth == MAX_DEPTH {
+        if time * 2 > data.time_tp && depth >= 4 && final_depth == MAX_DEPTH {
             stop = true;
         }
         let nodes = data.nodes;
@@ -65,8 +60,6 @@ pub fn find_best_move(
         } else {
             0
         };
-
-        data.eval = eval;
 
         if data.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
             let mate_in = (MATE - data.eval.abs()) / 2;

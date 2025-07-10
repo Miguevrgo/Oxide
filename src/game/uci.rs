@@ -72,6 +72,9 @@ impl UCIEngine {
             "go" => {
                 self.go(&parts[1..]);
             }
+            "eval" => {
+                println!("eval: {}cp", self.board.evaluate(&mut EvalTable::default()));
+            }
             "quit" => {
                 std::process::exit(0);
             }
@@ -158,7 +161,7 @@ impl UCIEngine {
             Colour::Black => winc,
         };
 
-        let play_time = if let Some(t) = time_left {
+        self.data.time_tp = if let Some(t) = time_left {
             (if let Some(inc) = time_incr {
                 (t / 30 + 3 * inc / 4) as u128
             } else {
@@ -181,7 +184,7 @@ impl UCIEngine {
         }
         .min(MAX_TIME);
 
-        find_best_move(&self.board, depth, play_time, &mut self.data);
+        find_best_move(&self.board, depth, &mut self.data);
         println!("bestmove {}", self.data.best_move);
     }
 
