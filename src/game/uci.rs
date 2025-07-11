@@ -23,6 +23,8 @@ const DEFAULT: f64 = 4000.0;
 pub struct UCIEngine {
     board: Board,
     pub data: SearchData,
+    hash_mb: usize,
+    threads: u8,
 }
 
 impl UCIEngine {
@@ -30,6 +32,8 @@ impl UCIEngine {
         UCIEngine {
             board: Board::default(),
             data: SearchData::new(),
+            hash_mb: 32,
+            threads: 1,
         }
     }
 
@@ -56,6 +60,8 @@ impl UCIEngine {
             "uci" => {
                 println!("id name {NAME} {VERSION}");
                 println!("id author {AUTHOR}");
+                println!("option name Hash type spin default 32 min 1 max 4096");
+                println!("option name Threads type spin default 1 min 1 max 1");
                 println!("uciok");
             }
             "ucinewgame" => {
@@ -71,6 +77,27 @@ impl UCIEngine {
             "perft" => self.run_perft(&parts[1..]),
             "go" => {
                 self.go(&parts[1..]);
+            }
+            "setoption" => {
+                if parts.len() >= 5 && parts[1] == "name" {
+                    match parts[2] {
+                        "Hash" if parts[3] == "value" => {
+                            if let Ok(mb) = parts[4].parse() {
+                                self.hash_mb = mb;
+                            }
+                        }
+                        "Threads" if parts[3] == "value" => {
+                            if let Ok(n) = parts[4].parse() {
+                                if n != 1 {
+                                    println!("Only one thread supported!")
+                                } else {
+                                    self.threads = n;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
             "eval" => {
                 println!("eval: {}cp", self.board.evaluate(&mut EvalTable::default()));
