@@ -1,4 +1,4 @@
-use crate::engine::tables::{Bound, SearchData, TTEntry};
+use crate::engine::tables::{Bound, SearchData};
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
 use std::time::Instant;
@@ -126,8 +126,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     let pv_node = beta > alpha + 1;
-    let tt_move = data.tt.get(key).map(|entry| entry.best_move);
-    if let Some(entry) = data.tt.get(key) {
+    let tt_move = data.tt.probe(key).map(|entry| entry.best_move);
+    if let Some(entry) = data.tt.probe(key) {
         if entry.depth() >= depth && !pv_node {
             match entry.bound() {
                 Bound::Exact => return entry.value,
@@ -255,14 +255,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         Bound::Exact
     };
 
-    data.tt.insert(
-        key,
-        TTEntry {
-            value: max_score,
-            best_move,
-            flags: TTEntry::make_flags(depth, bound),
-        },
-    );
+    data.tt
+        .insert(key, bound, best_move, max_score, depth, pv_node);
 
     if data.ply == 0 {
         data.best_move = best_move
@@ -273,7 +267,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
 fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
     let key = board.hash.0;
-    if let Some(entry) = data.tt.get(key) {
+    if let Some(entry) = data.tt.probe(key) {
         let tt_score = entry.value;
         match entry.bound() {
             Bound::Exact => return tt_score,
@@ -325,14 +319,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         bound = Bound::Exact;
     }
 
-    data.tt.insert(
-        key,
-        TTEntry {
-            value: best_eval,
-            best_move,
-            flags: TTEntry::make_flags(0, bound),
-        },
-    );
+    data.tt.insert(key, bound, best_move, best_eval, 0, false);
 
     best_eval
 }
