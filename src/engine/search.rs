@@ -45,9 +45,9 @@ pub fn find_best_move(board: &Board, max_depth: Option<u8>, data: &mut SearchDat
 
     while depth <= final_depth && !stop {
         data.eval = if depth < 5 {
-            negamax(board, depth - 1, -INF, INF, data)
+            negamax(board, depth, -INF, INF, data)
         } else {
-            aspiration_window(board, depth - 1, data.eval, data)
+            aspiration_window(board, depth, data.eval, data)
         };
 
         let time = data.timing.elapsed().as_millis();
