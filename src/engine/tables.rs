@@ -1,22 +1,24 @@
 use crate::engine::search::INF;
 use crate::game::moves::Move;
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
 use super::network::EvalTable;
 
 /// Transposition Table
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Bound {
     Exact,
     Lower,
     Upper,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 #[repr(C)]
 pub struct TTEntry {
+    pub key: u64,
     pub value: i32,
     pub best_move: Move,
+    pub age: u8,
     pub flags: u8, // depth(6) + bound(2)
 }
 
@@ -42,22 +44,70 @@ impl TTEntry {
 }
 
 pub struct TranspositionTable {
-    pub tt: HashMap<u64, TTEntry>,
+    pub tt: Vec<TTEntry>,
+    age: u8,
 }
 
 impl TranspositionTable {
-    pub fn new() -> Self {
-        TranspositionTable {
-            tt: HashMap::default(),
+    pub fn with_size_mb(mb: usize) -> Self {
+        let bytes = mb * 1_048_576;
+        let entry_sz = std::mem::size_of::<TTEntry>();
+        let len = (bytes / entry_sz).next_power_of_two();
+        Self {
+            tt: vec![TTEntry::default(); len],
+            age: 0,
         }
     }
 
-    pub fn get(&self, key: u64) -> Option<&TTEntry> {
-        self.tt.get(&key)
+    fn idx(&self, hash: u64) -> usize {
+        // (Read Lemire Blog for explanation | Carp)
+        ((hash as u128 * self.tt.len() as u128) >> 64) as usize
     }
 
-    pub fn insert(&mut self, key: u64, entry: TTEntry) {
-        self.tt.insert(key, entry);
+    pub fn probe(&self, hash: u64) -> Option<&TTEntry> {
+        let e = &self.tt[self.idx(hash)];
+        (e.key == hash).then_some(e)
+    }
+
+    pub fn clear(&mut self) {
+        self.tt.fill(TTEntry::default());
+        self.age = 0;
+    }
+
+    pub fn inc_age(&mut self) {
+        self.age = (self.age + 1) & 0x7F;
+    }
+
+    pub fn insert(
+        &mut self,
+        hash: u64,
+        bound: Bound,
+        mut best: Move,
+        value: i32,
+        depth: u8,
+        pv: bool,
+    ) {
+        let idx = self.idx(hash);
+        let slot = &mut self.tt[idx];
+        let same = slot.key == hash;
+
+        if self.age != slot.age
+            || !same
+            || bound == Bound::Exact
+            || depth as usize + 4 + 2 * pv as usize > slot.depth() as usize
+        {
+            if best == Move::NULL && same {
+                best = slot.best_move;
+            }
+
+            *slot = TTEntry {
+                key: hash,
+                value,
+                best_move: best,
+                age: self.age,
+                flags: TTEntry::make_flags(depth, bound),
+            };
+        }
     }
 }
 
@@ -96,7 +146,7 @@ impl SearchData {
             eval: -INF,
             stack: Vec::with_capacity(16),
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
-            tt: TranspositionTable::new(),
+            tt: TranspositionTable::with_size_mb(32),
             cache: EvalTable::default(),
             history: [[[0; 64]; 64]; 2],
         }
@@ -112,9 +162,13 @@ impl SearchData {
         self.ply -= 1;
     }
 
+    pub fn resize_tt(&mut self, mb_size: usize) {
+        self.tt = TranspositionTable::with_size_mb(mb_size);
+    }
+
     pub fn clear(&mut self) {
         self.stack.clear();
-        self.tt.tt.clear(); // TODO
+        self.tt.clear();
         self.nodes = 0;
         self.ply = 0;
     }

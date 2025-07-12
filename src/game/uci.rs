@@ -23,8 +23,6 @@ const DEFAULT: f64 = 4000.0;
 pub struct UCIEngine {
     board: Board,
     pub data: SearchData,
-    hash_mb: usize,
-    threads: u8,
 }
 
 impl UCIEngine {
@@ -32,8 +30,6 @@ impl UCIEngine {
         UCIEngine {
             board: Board::default(),
             data: SearchData::new(),
-            hash_mb: 32,
-            threads: 1,
         }
     }
 
@@ -83,15 +79,15 @@ impl UCIEngine {
                     match parts[2] {
                         "Hash" if parts[3] == "value" => {
                             if let Ok(mb) = parts[4].parse() {
-                                self.hash_mb = mb;
+                                if mb > 0 {
+                                    self.data.resize_tt(mb);
+                                }
                             }
                         }
                         "Threads" if parts[3] == "value" => {
-                            if let Ok(n) = parts[4].parse() {
+                            if let Ok(n) = parts[4].parse::<u8>() {
                                 if n != 1 {
                                     println!("Only one thread supported!")
-                                } else {
-                                    self.threads = n;
                                 }
                             }
                         }
@@ -138,7 +134,7 @@ impl UCIEngine {
     }
 
     fn go(&mut self, args: &[&str]) {
-        self.data.tt.tt.clear(); // TODO:
+        self.data.tt.inc_age();
         self.data.cache = EvalTable::default();
         let mut depth: Option<u8> = None;
         let mut wtime: Option<usize> = None;
