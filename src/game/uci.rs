@@ -1,5 +1,5 @@
 use crate::engine::network::EvalTable;
-use crate::engine::search::find_best_move;
+use crate::engine::search::{find_best_move, MAX_DEPTH};
 use crate::engine::tables::SearchData;
 use crate::game::piece::Colour;
 use std::io::BufRead;
@@ -18,7 +18,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Time Control constants
 const MAX_TIME: u128 = 180000;
-const DEFAULT: f64 = 4000.0;
 
 pub struct UCIEngine {
     board: Board,
@@ -136,42 +135,27 @@ impl UCIEngine {
 
     fn go(&mut self, args: &[&str]) {
         self.data.tt.inc_age();
+        self.data.tt.clear();
         self.data.cache = EvalTable::default();
-        let mut depth: Option<u8> = None;
+        let mut depth: u8 = 64;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
         let mut winc: Option<usize> = None;
         let mut binc: Option<usize> = None;
         let mut moves_left: Option<f64> = None;
-        let mut i = 0;
 
-        while i < args.len() {
-            match args[i] {
-                "depth" if i + 1 < args.len() => {
-                    i += 1;
-                    depth = args[i].parse().ok();
-                }
-                "wtime" if i + 1 < args.len() => {
-                    i += 1;
-                    wtime = args[i].parse().ok();
-                }
-                "btime" if i + 1 < args.len() => {
-                    i += 1;
-                    btime = args[i].parse().ok();
-                }
-                "winc" if i + 1 < args.len() => {
-                    i += 1;
-                    winc = args[i].parse().ok();
-                }
-                "binc" if i + 1 < args.len() => {
-                    i += 1;
-                    binc = args[i].parse().ok();
-                }
-                "movestogo" if i + 1 < args.len() => {
-                    i += 1;
-                    moves_left = args[i].parse().ok()
-                }
-                _ => {}
+        let mut i = 0;
+        while i + 1 < args.len() {
+            let value = args[i];
+            i += 1;
+            match value {
+                "depth" => depth = args[i].parse().unwrap_or(MAX_DEPTH).clamp(1, 64),
+                "wtime" => wtime = args[i].parse().ok(),
+                "btime" => btime = args[i].parse().ok(),
+                "winc" => winc = args[i].parse().ok(),
+                "binc" => binc = args[i].parse().ok(),
+                "movestogo" => moves_left = args[i].parse().ok(),
+                _ => i -= 1,
             }
             i += 1;
         }
@@ -187,24 +171,19 @@ impl UCIEngine {
 
         self.data.time_tp = if let Some(t) = time_left {
             (if let Some(inc) = time_incr {
-                (t / 30 + 3 * inc / 4) as u128
+                (t / 30 + 4 * inc / 5) as u128
             } else {
                 (t as f64 / moves_left.unwrap_or(30.0)
                     * match self.board.halfmoves {
                         0..=10 => 0.6,
                         11..=30 => 1.1,
-                        31..=50 => 1.25,
-                        _ => 0.9,
+                        31..=50 => 1.35,
+                        _ => 1.0,
                     }) as u128
             })
             .min((t as f64 * 0.95) as u128)
         } else {
-            (DEFAULT
-                * match self.board.halfmoves {
-                    0..=10 => 0.64,
-                    11..=30 => 1.0,
-                    _ => 1.25,
-                }) as u128
+            MAX_TIME
         }
         .min(MAX_TIME);
 

@@ -1,81 +1,48 @@
 use crate::engine::tables::{Bound, SearchData};
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
-use std::time::Instant;
 
 pub const INF: i32 = 2 << 16;
-const MATE: i32 = INF >> 2;
-const DRAW: i32 = 0;
-const MAX_DEPTH: u8 = 48;
+pub const MATE: i32 = INF >> 2;
+pub const DRAW: i32 = 0;
+pub const MAX_DEPTH: u8 = 64;
 
 // Search Parameters
-pub const ASPIRATION_DELTA: i32 = 50;
-pub const ASPIRATION_DELTA_LIMIT: i32 = 400;
+const ASPIRATION_DELTA: i32 = 50;
+const ASPIRATION_DELTA_LIMIT: i32 = 400;
 
-pub const NMP_MIN_DEPTH: u8 = 3;
-pub const NMP_BASE_REDUCTION: u8 = 4;
-pub const NMP_DIVISOR: u8 = 4;
+const NMP_MIN_DEPTH: u8 = 3;
+const NMP_BASE_REDUCTION: u8 = 4;
+const NMP_DIVISOR: u8 = 4;
 
-pub const RFP_DEPTH: u8 = 8;
-pub const RFP_IMPROVING: i32 = 50;
-pub const RFP_MARGIN: i32 = 90;
-pub const LMR_DEPTH: u8 = 2;
-pub const LMR_THRESHOLD: usize = 2;
+const RFP_DEPTH: u8 = 8;
+const RFP_IMPROVING: i32 = 50;
+const RFP_MARGIN: i32 = 90;
+const LMR_DEPTH: u8 = 2;
+const LMR_THRESHOLD: usize = 2;
 
-pub const RAZOR_DEPTH: u8 = 3;
-pub const RAZOR_MARGIN: i32 = 420;
+const RAZOR_DEPTH: u8 = 3;
+const RAZOR_MARGIN: i32 = 420;
 
-pub fn find_best_move(board: &Board, max_depth: Option<u8>, data: &mut SearchData) {
-    let mut depth = 1;
-    let mut stop = false;
-    let final_depth = max_depth.unwrap_or(MAX_DEPTH);
-    data.best_move = Move::NULL;
+pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
     data.push(board.hash.0);
-    data.nodes = 0;
-    data.ply = 0;
-    data.timing = Instant::now();
+    data.start_search();
 
-    for color in 0..2 {
-        for from in 0..64 {
-            for to in 0..64 {
-                data.history[color][from][to] /= 2;
-            }
-        }
-    }
-
-    while depth <= final_depth && !stop {
-        data.eval = if depth < 5 {
-            negamax(board, depth, -INF, INF, data)
+    while data.depth <= max_depth && !data.stop {
+        data.eval = if data.depth < 5 {
+            negamax(board, data.depth, -INF, INF, data)
         } else {
-            aspiration_window(board, depth, data.eval, data)
+            aspiration_window(board, data.depth, data.eval, data)
         };
 
-        let time = data.timing.elapsed().as_millis();
-        if time * 2 > data.time_tp && depth >= 4 && final_depth == MAX_DEPTH {
-            stop = true;
-        }
-        let nodes = data.nodes;
-        let nps = if time > 0 {
-            (1000 * nodes as u128 / time) as u64
-        } else {
-            0
-        };
-
-        if data.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
-            let mate_in = (MATE - data.eval.abs()) / 2;
-            let sign = if data.eval < 0 { "-" } else { "" };
-            println!(
-                "info depth {depth} score mate {sign}{mate_in} time {time} nodes {nodes} nps {nps}"
-            );
+        if data.stop {
             break;
-        } else {
-            println!(
-                "info depth {depth} score cp {} time {time} nodes {nodes} nps {nps} pv {}",
-                data.eval, data.best_move
-            );
+        } else if data.timing.elapsed().as_millis() * 5 / 4 > data.time_tp {
+            data.stop = true;
         }
 
-        depth += 1;
+        println!("{data}");
+        data.depth += 1;
     }
 }
 
@@ -87,6 +54,9 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
 
     loop {
         let score = negamax(board, depth, alpha, beta, data);
+        if data.stop {
+            return 0;
+        }
 
         if score <= alpha {
             beta = (alpha + beta) / 2;
@@ -108,6 +78,13 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
 }
 
 fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
+    if data.stop {
+        return 0;
+    } else if data.nodes & 4095 == 0 && !data.continue_search() {
+        data.stop = true;
+        return 0;
+    }
+
     let in_check = board.in_check();
     let key = board.hash.0;
 
@@ -245,6 +222,10 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
             break;
         }
+    }
+
+    if data.stop {
+        return 0;
     }
 
     let bound = if max_score <= old_alpha {

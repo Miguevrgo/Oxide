@@ -1,4 +1,4 @@
-use crate::engine::search::INF;
+use crate::engine::search::{INF, MATE, MAX_DEPTH};
 use crate::game::moves::Move;
 use std::time::Instant;
 
@@ -120,8 +120,13 @@ pub struct PlyData {
 }
 
 pub struct SearchData {
+    // Search Control
     pub timing: Instant,
     pub time_tp: u128,
+    pub stop: bool,
+    pub depth: u8,
+
+    // Data
     pub ply: usize,
     pub nodes: u64,
     pub best_move: Move,
@@ -140,16 +145,38 @@ impl SearchData {
         Self {
             timing: Instant::now(),
             time_tp: 0,
+            stop: false,
+            depth: 0,
+
             ply: 0,
             nodes: 0,
             best_move: Move::NULL,
             eval: -INF,
+
             stack: Vec::with_capacity(16),
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
             tt: TranspositionTable::with_size_mb(16),
             cache: EvalTable::default(),
             history: [[[0; 64]; 64]; 2],
         }
+    }
+
+    pub fn start_search(&mut self) {
+        self.depth = 1;
+        self.stop = false;
+        self.best_move = Move::NULL;
+        self.nodes = 0;
+        self.ply = 0;
+        self.timing = Instant::now();
+        self.decay_history();
+    }
+
+    fn decay_history(&mut self) {
+        self.history
+            .iter_mut()
+            .flatten()
+            .flatten()
+            .for_each(|v| *v /= 2);
     }
 
     pub fn push(&mut self, hash: u64) {
@@ -187,5 +214,37 @@ impl SearchData {
             }
         }
         false
+    }
+
+    pub fn continue_search(&self) -> bool {
+        let time = self.timing.elapsed().as_millis();
+        time < self.time_tp
+    }
+}
+
+impl std::fmt::Display for SearchData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let time = self.timing.elapsed().as_millis();
+        let nps = if time > 0 {
+            (1000 * self.nodes as u128 / time) as u64
+        } else {
+            0
+        };
+
+        if self.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
+            let mate_in = (MATE - self.eval.abs()) / 2;
+            let sign = if self.eval < 0 { "-" } else { "" };
+            write!(
+                f,
+                "info depth {} score mate {sign}{mate_in} time {time} nodes {} nps {nps} pv {}",
+                self.depth, self.nodes, self.best_move
+            )
+        } else {
+            write!(
+                f,
+                "info depth {} score cp {} time {time} nodes {} nps {nps} pv {}",
+                self.depth, self.eval, self.nodes, self.best_move
+            )
+        }
     }
 }
