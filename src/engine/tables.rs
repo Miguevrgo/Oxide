@@ -146,7 +146,7 @@ impl SearchData {
             eval: -INF,
             stack: Vec::with_capacity(16),
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
-            tt: TranspositionTable::with_size_mb(32),
+            tt: TranspositionTable::with_size_mb(16),
             cache: EvalTable::default(),
             history: [[[0; 64]; 64]; 2],
         }
@@ -168,7 +168,6 @@ impl SearchData {
 
     pub fn clear(&mut self) {
         self.stack.clear();
-        self.tt.clear();
         self.nodes = 0;
         self.ply = 0;
     }
