@@ -63,6 +63,7 @@ impl UCIEngine {
             "ucinewgame" => {
                 self.board = Board::default();
                 self.data.clear();
+                self.data.tt.clear();
             }
             "isready" => {
                 println!("readyok");
