@@ -296,9 +296,6 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
     data.ply += 1;
 
     while let Some((m, _)) = moves.pick(&mut scores) {
-        if !board.see(m, 1) {
-            continue;
-        }
         let mut new_board = *board;
         new_board.make_move(m);
         data.nodes += 1;
