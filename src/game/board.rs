@@ -297,8 +297,6 @@ impl Board {
             self.hash.hash_enpassant(sq);
             self.en_passant = None;
         }
-
-        self.halfmoves += 1;
     }
 
     /// Returns whether the given square is attacked by the given side or not,

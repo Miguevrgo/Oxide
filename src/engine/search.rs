@@ -37,7 +37,9 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
 
         if data.stop {
             break;
-        } else if data.timing.elapsed().as_millis() * 5 / 4 > data.time_tp {
+        } else if data.timing.elapsed().as_millis() * 5 / 4 > data.time_tp
+            || data.eval.abs() >= MATE - i32::from(MAX_DEPTH)
+        {
             data.stop = true;
         }
 
@@ -78,9 +80,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
 }
 
 fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
-    if data.stop {
-        return 0;
-    } else if data.nodes & 4095 == 0 && !data.continue_search() {
+    if data.stop || (data.nodes & 4095 == 0 && !data.continue_search()) {
         data.stop = true;
         return 0;
     }

@@ -135,7 +135,6 @@ impl UCIEngine {
 
     fn go(&mut self, args: &[&str]) {
         self.data.tt.inc_age();
-        self.data.tt.clear();
         self.data.cache = EvalTable::default();
         let mut depth: u8 = 64;
         let mut wtime: Option<usize> = None;
@@ -171,7 +170,7 @@ impl UCIEngine {
 
         self.data.time_tp = if let Some(t) = time_left {
             (if let Some(inc) = time_incr {
-                (t / 30 + 4 * inc / 5) as u128
+                (t / 20 + 4 * inc / 5) as u128
             } else {
                 (t as f64 / moves_left.unwrap_or(30.0)
                     * match self.board.halfmoves {
