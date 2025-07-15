@@ -31,12 +31,8 @@ This engine is designed to be both a learning experience and a playground for ex
 
 `Oxide` is a work in progress with clear goals and some fixes on the horizon:
 
-- **Expand UCI Features:** Include additional info (seldepth) as well as tune iterative deepening for time based depth.
-- **Enhance Search:** Several search improvements have been made, some of them require another deep check, also, the following enhancements are planned to be tested:
-  - Razoring
-  - SEE
-  - Killer Heuristic
-  - Extensions
+- **Expand UCI Features:** Include additional info (seldepth).
+- **Enhance Search:** Several search improvements have been made, some of them require another check, some tweaking, etc. Looking forward to implement some tables.
 - **NNUE** Use a new approach.
 ## Getting Started
 
