@@ -7,6 +7,12 @@ pub const MATE: i32 = INF >> 2;
 pub const DRAW: i32 = 0;
 pub const MAX_DEPTH: u8 = 64;
 
+// Move Scores
+const TT_SCORE: i32 = 10_000_000;
+const PROM_SCORE: i32 = 80_000;
+const CAP_SCORE: i32 = 90_000;
+const KILL_SCORE: i32 = 70_000;
+
 // Search Parameters
 const ASPIRATION_DELTA: i32 = 50;
 const ASPIRATION_DELTA_LIMIT: i32 = 400;
@@ -18,8 +24,8 @@ const NMP_DIVISOR: u8 = 4;
 const RFP_DEPTH: u8 = 8;
 const RFP_IMPROVING: i32 = 50;
 const RFP_MARGIN: i32 = 90;
-const LMR_DEPTH: u8 = 2;
-const LMR_THRESHOLD: usize = 2;
+const LMR_DIV: f64 = 2.55;
+const LMR_BASE: f64 = 0.55;
 
 const RAZOR_DEPTH: u8 = 3;
 const RAZOR_MARGIN: i32 = 420;
@@ -115,7 +121,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
     }
 
-    if !in_check && !pv_node {
+    let can_prune = !pv_node && !in_check;
+    if can_prune {
         // Reverse Futility pruning
         let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
@@ -161,44 +168,52 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         scores[i] = move_score(m, board, tt_move, data.ply, data);
     });
 
-    let mut best_move = Move::NULL;
     let old_alpha = alpha;
+    let mut best_move = Move::NULL;
     let mut max_score = -INF;
     let mut move_idx = 0;
+    let lmr_ready = depth > 1 && !in_check;
+    let lmr_depth = (depth as f64).ln() / (LMR_DIV);
+    let can_prune = !pv_node && !in_check;
 
-    let mut is_first = true;
-    while let Some((m, _)) = moves.pick(&mut scores) {
+    while let Some((m, ms)) = moves.pick(&mut scores) {
+        if can_prune && max_score < MATE && depth <= 2 && ms < -2000 {
+            break;
+        }
+
         let mut new_board = *board;
         new_board.make_move(m);
         move_idx += 1;
         data.push(new_board.hash.0);
         data.nodes += 1;
 
-        let mut score;
+        let new_in_check = new_board.in_check();
+        let mut reduction = 0;
 
-        if is_first {
-            score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
-            is_first = false;
-        } else if depth >= LMR_DEPTH
-            && !m.get_type().is_capture()
-            && !m.get_type().is_promotion()
-            && move_idx >= LMR_THRESHOLD
-        {
-            let reduction = (depth as i32 / 3).min(2) as u8;
-            score = -negamax(&new_board, depth - 1 - reduction, -alpha - 1, -alpha, data);
-
-            if score > alpha {
-                score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, data);
-                if score > alpha {
-                    score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
-                }
-            }
-        } else {
-            score = -negamax(&new_board, depth - 1, -alpha - 1, -alpha, data);
-            if score > alpha {
-                score = -negamax(&new_board, depth - 1, -beta, -alpha, data);
-            }
+        // Late Move Reduction
+        if lmr_ready && ms < KILL_SCORE {
+            reduction = (LMR_BASE + lmr_depth * (move_idx as f64).ln()) as i16;
+            reduction -= i16::from(pv_node);
+            reduction -= i16::from(new_in_check);
+            reduction = reduction.clamp(0, depth as i16 - 1);
         }
+
+        let score = if move_idx == 1 {
+            -negamax(&new_board, depth - 1, -beta, -alpha, data)
+        } else {
+            let mut zw_search = -negamax(
+                &new_board,
+                depth - 1 - reduction as u8,
+                -alpha - 1,
+                -alpha,
+                data,
+            );
+
+            if zw_search > alpha && (pv_node || reduction > 0) {
+                zw_search = -negamax(&new_board, depth - 1, -beta, -alpha, data);
+            }
+            zw_search
+        };
 
         if score > max_score {
             max_score = score;
@@ -320,25 +335,25 @@ pub fn move_score(
     data: &SearchData,
 ) -> i32 {
     if Some(*m) == tt_move {
-        return 100_000;
+        return TT_SCORE;
     }
 
     let kind = m.get_type();
 
     if kind == MoveKind::QueenPromotion {
-        return 80_000;
+        return PROM_SCORE;
     }
 
     if kind.is_capture() {
         let see = board.see(*m, 0);
-        return 90_000 * see as i32 + mvv_lva(*m, board);
+        return CAP_SCORE * see as i32 + mvv_lva(*m, board);
     }
 
     let killers = data.ply_data[ply].killers;
     if *m == killers[0] {
-        return 70_001;
+        return KILL_SCORE + 1;
     } else if *m == killers[1] {
-        return 70_000;
+        return KILL_SCORE;
     }
 
     data.history[board.side as usize][m.get_source().index()][m.get_dest().index()] as i32
