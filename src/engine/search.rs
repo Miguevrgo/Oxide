@@ -85,6 +85,65 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
     }
 }
 
+fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
+    let key = board.hash.0;
+    if let Some(entry) = data.tt.probe(key) {
+        let tt_score = entry.value;
+        match entry.bound() {
+            Bound::Exact => return tt_score,
+            Bound::Lower if tt_score >= beta => return tt_score,
+            Bound::Upper if tt_score <= alpha => return tt_score,
+            _ => {}
+        }
+    }
+
+    let mut best_eval = board.evaluate(&mut data.cache);
+    if best_eval >= beta {
+        return best_eval;
+    }
+
+    alpha = alpha.max(best_eval);
+
+    let mut moves = board.generate_legal_moves::<false>();
+    let mut scores = [0; 252];
+    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
+        scores[i] = mvv_lva(*m, board);
+    });
+
+    let mut best_move = Move::default();
+    let mut bound = Bound::Upper;
+
+    data.ply += 1;
+
+    while let Some((m, _)) = moves.pick(&mut scores) {
+        let mut new_board = *board;
+        new_board.make_move(m);
+        data.nodes += 1;
+
+        let score = -quiescence(&new_board, -beta, -alpha, data);
+
+        if score > best_eval {
+            best_eval = score;
+            best_move = m;
+            alpha = alpha.max(score);
+        }
+
+        if score >= beta {
+            bound = Bound::Lower;
+            break;
+        }
+    }
+    data.ply -= 1;
+
+    if best_eval > alpha {
+        bound = Bound::Exact;
+    }
+
+    data.tt.insert(key, bound, best_move, best_eval, 0, false);
+
+    best_eval
+}
+
 fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
     if data.stop || (data.nodes & 4095 == 0 && !data.continue_search()) {
         data.stop = true;
@@ -259,65 +318,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     max_score
-}
-
-fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -> i32 {
-    let key = board.hash.0;
-    if let Some(entry) = data.tt.probe(key) {
-        let tt_score = entry.value;
-        match entry.bound() {
-            Bound::Exact => return tt_score,
-            Bound::Lower if tt_score >= beta => return tt_score,
-            Bound::Upper if tt_score <= alpha => return tt_score,
-            _ => {}
-        }
-    }
-
-    let mut best_eval = board.evaluate(&mut data.cache);
-    if best_eval >= beta {
-        return best_eval;
-    }
-
-    alpha = alpha.max(best_eval);
-
-    let mut moves = board.generate_legal_moves::<false>();
-    let mut scores = [0; 252];
-    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
-        scores[i] = mvv_lva(*m, board);
-    });
-
-    let mut best_move = Move::default();
-    let mut bound = Bound::Upper;
-
-    data.ply += 1;
-
-    while let Some((m, _)) = moves.pick(&mut scores) {
-        let mut new_board = *board;
-        new_board.make_move(m);
-        data.nodes += 1;
-
-        let score = -quiescence(&new_board, -beta, -alpha, data);
-
-        if score > best_eval {
-            best_eval = score;
-            best_move = m;
-            alpha = alpha.max(score);
-        }
-
-        if score >= beta {
-            bound = Bound::Lower;
-            break;
-        }
-    }
-    data.ply -= 1;
-
-    if best_eval > alpha {
-        bound = Bound::Exact;
-    }
-
-    data.tt.insert(key, bound, best_move, best_eval, 0, false);
-
-    best_eval
 }
 
 #[inline]
