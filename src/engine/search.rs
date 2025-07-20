@@ -110,7 +110,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         scores[i] = mvv_lva(*m, board);
     });
 
-    let mut best_move = Move::default();
+    let mut best_move = Move::NULL;
     let mut bound = Bound::Upper;
 
     data.ply += 1;
@@ -168,8 +168,9 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     let pv_node = beta > alpha + 1;
-    let tt_move = data.tt.probe(key).map(|entry| entry.best_move);
+    let mut tt_move = None;
     if let Some(entry) = data.tt.probe(key) {
+        tt_move = Some(entry.best_move);
         if entry.depth() >= depth && !pv_node {
             match entry.bound() {
                 Bound::Exact => return entry.value,

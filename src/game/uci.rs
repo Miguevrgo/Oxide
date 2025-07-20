@@ -124,7 +124,7 @@ impl UCIEngine {
         let moves_start = args.iter().position(|&x| x == "moves");
         if let Some(start) = moves_start {
             for move_str in &args[start + 1..] {
-                self.data.push(self.board.hash.0);
+                self.data.stack.push(self.board.hash.0);
                 let m = self.parse_move(&board, move_str);
                 board.make_move(m);
             }
