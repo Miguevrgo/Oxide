@@ -31,7 +31,6 @@ const RAZOR_DEPTH: u8 = 3;
 const RAZOR_MARGIN: i32 = 420;
 
 pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
-    data.push(board.hash.0);
     data.start_search();
 
     while data.depth <= max_depth && !data.stop {
@@ -154,7 +153,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let key = board.hash.0;
 
     if data.ply > 0 {
-        if board.is_draw() || data.is_repetition(key, false) {
+        if board.is_draw() || data.is_repetition(board, key, false) {
             return DRAW;
         }
         // Check Extensions
@@ -235,6 +234,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let lmr_ready = depth > 1 && !in_check;
     let lmr_depth = (depth as f64).ln() / (LMR_DIV);
     let can_prune = !pv_node && !in_check;
+    data.push(key);
 
     while let Some((m, ms)) = moves.pick(&mut scores) {
         if can_prune && max_score < MATE && depth <= 2 && ms < -2000 {
@@ -244,7 +244,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         let mut new_board = *board;
         new_board.make_move(m);
         move_idx += 1;
-        data.push(new_board.hash.0);
         data.nodes += 1;
 
         let new_in_check = new_board.in_check();
@@ -281,7 +280,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         alpha = alpha.max(score);
-        data.pop();
 
         if alpha >= beta {
             if !m.get_type().is_capture() {
@@ -298,6 +296,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             break;
         }
     }
+
+    data.pop();
 
     if data.stop {
         return 0;
