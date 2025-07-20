@@ -1,4 +1,5 @@
 use crate::engine::search::{INF, MATE, MAX_DEPTH};
+use crate::game::board::Board;
 use crate::game::moves::Move;
 use std::time::Instant;
 
@@ -199,18 +200,23 @@ impl SearchData {
         self.ply = 0;
     }
 
-    pub fn is_repetition(&self, curr_hash: u64, root: bool) -> bool {
+    pub fn is_repetition(&self, board: &Board, curr_hash: u64, root: bool) -> bool {
         if self.stack.len() < 6 {
             return false;
         }
 
         let mut reps = 1 + u8::from(root);
-        for &hash in self.stack.iter().rev().skip(1).step_by(2) {
-            if hash == curr_hash {
-                reps -= 1;
-                if reps == 0 {
-                    return true;
-                }
+        for &hash in self
+            .stack
+            .iter()
+            .rev()
+            .take(usize::from(board.halfmoves + 1))
+            .skip(1)
+            .step_by(2)
+        {
+            reps -= u8::from(hash == curr_hash);
+            if reps == 0 {
+                return true;
             }
         }
         false
