@@ -1,6 +1,6 @@
 use crate::engine::search::{INF, MATE, MAX_DEPTH};
 use crate::game::board::Board;
-use crate::game::moves::Move;
+use crate::game::moves::{Move, MoveList};
 use std::time::Instant;
 
 use super::network::EvalTable;
@@ -118,6 +118,7 @@ pub const MAX_PLY: usize = 128;
 pub struct PlyData {
     pub killers: [Move; 2],
     pub eval: i32,
+    pub pv: MoveList,
 }
 
 pub struct SearchData {
@@ -243,13 +244,13 @@ impl std::fmt::Display for SearchData {
             write!(
                 f,
                 "info depth {} score mate {sign}{mate_in} time {time} nodes {} nps {nps} pv {}",
-                self.depth, self.nodes, self.best_move
+                self.depth, self.nodes, self.ply_data[0].pv
             )
         } else {
             write!(
                 f,
                 "info depth {} score cp {} time {time} nodes {} nps {nps} pv {}",
-                self.depth, self.eval, self.nodes, self.best_move
+                self.depth, self.eval, self.nodes, self.ply_data[0].pv
             )
         }
     }
