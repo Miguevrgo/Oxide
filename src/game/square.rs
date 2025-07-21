@@ -82,12 +82,18 @@ impl Square {
         BitBoard(1 << self.0)
     }
 
+    pub fn jump(self, rank_delta: i8, file_delta: i8) -> Self {
+        let file = (self.0 % 8) as i8 + rank_delta;
+        let rank = (self.0 / 8) as i8 + file_delta;
+        Self((rank * 8 + file) as u8)
+    }
+
     /// Attempts to move the square by the given file and rank deltas.
     ///
     /// Returns `None` if the resulting position is off the board.
     /// With LSB = a1, positive `file_delta` moves up (e.g., a2 to a3),
     /// and positive `rank_delta` moves right (e.g., a2 to b2).
-    pub fn jump(self, rank_delta: i8, file_delta: i8) -> Option<Self> {
+    pub fn jump_check(self, rank_delta: i8, file_delta: i8) -> Option<Self> {
         let file = (self.0 % 8) as i8 + rank_delta;
         let rank = (self.0 / 8) as i8 + file_delta;
         if (0..8).contains(&file) && (0..8).contains(&rank) {
