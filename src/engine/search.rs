@@ -151,6 +151,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     let in_check = board.in_check();
     let key = board.hash.0;
+    data.ply_data[data.ply].pv.clear();
 
     if data.ply > 0 {
         if board.is_draw() || data.is_repetition(board, key, false) {
@@ -277,6 +278,11 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         if score > max_score {
             max_score = score;
             best_move = m;
+            if pv_node {
+                let pre_line = data.ply_data[data.ply].pv;
+                let full_line = &mut data.ply_data[data.ply - 1].pv;
+                full_line.update_pv_line(m, &pre_line);
+            }
         }
 
         alpha = alpha.max(score);

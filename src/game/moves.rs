@@ -257,9 +257,10 @@ impl Board {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct MoveList {
     pub moves: [Move; MoveList::SIZE],
-    len: usize,
+    pub len: usize,
 }
 
 impl Default for MoveList {
@@ -319,6 +320,16 @@ impl MoveList {
 
         Some((self.moves[self.len], best_score))
     }
+
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
+
+    pub fn update_pv_line(&mut self, m: Move, old: &MoveList) {
+        self.len = old.len + 1;
+        self.moves[0] = m;
+        self.moves[1..=old.len].copy_from_slice(&old.moves[..old.len]);
+    }
 }
 
 impl IntoIterator for MoveList {
@@ -338,5 +349,17 @@ impl<'a> IntoIterator for &'a MoveList {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.moves[..self.len].iter().copied()
+    }
+}
+
+impl std::fmt::Display for MoveList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut moves = String::new();
+
+        for m in &self.moves[0..self.len] {
+            moves.push_str(&format!(" {m}"));
+        }
+
+        write!(f, "{moves}")
     }
 }
