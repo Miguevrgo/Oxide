@@ -216,27 +216,26 @@ impl Board {
         let promo_rank = BitBoard::PROMO_RANKS[colour as usize];
         let opponent = self.sides[!colour as usize];
 
-        if let Some(dest) = src.jump(0, forward) {
-            if !occ.get_bit(dest) {
-                if promo_rank.get_bit(dest) {
-                    moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
-                    moves.push(Move::new(src, dest, MoveKind::RookPromotion));
-                    moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
-                    moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
-                } else if QUIET {
-                    moves.push(Move::new(src, dest, MoveKind::Quiet));
-                    if start_rank.get_bit(src) {
-                        let dbl = src.jump(0, 2 * forward).unwrap();
-                        if !occ.get_bit(dbl) {
-                            moves.push(Move::new(src, dbl, MoveKind::DoublePush));
-                        }
+        let dest = src.jump(0, forward);
+        if !occ.get_bit(dest) {
+            if promo_rank.get_bit(dest) {
+                moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
+                moves.push(Move::new(src, dest, MoveKind::RookPromotion));
+                moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
+                moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
+            } else if QUIET {
+                moves.push(Move::new(src, dest, MoveKind::Quiet));
+                if start_rank.get_bit(src) {
+                    let dbl = src.jump(0, 2 * forward);
+                    if !occ.get_bit(dbl) {
+                        moves.push(Move::new(src, dbl, MoveKind::DoublePush));
                     }
                 }
             }
         }
 
         for delta in [(-1, forward), (1, forward)] {
-            if let Some(dest) = src.jump(delta.0, delta.1) {
+            if let Some(dest) = src.jump_check(delta.0, delta.1) {
                 if opponent.get_bit(dest) {
                     if promo_rank.get_bit(dest) {
                         moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
@@ -247,7 +246,7 @@ impl Board {
                         moves.push(Move::new(src, dest, MoveKind::Capture));
                     }
                 } else if self.en_passant == Some(dest) {
-                    let ep_target = dest.jump(0, -forward).expect("Invalid en passant target");
+                    let ep_target = dest.jump(0, -forward);
                     if opponent.get_bit(ep_target) {
                         moves.push(Move::new(src, dest, MoveKind::EnPassant));
                     }
