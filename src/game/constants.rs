@@ -298,7 +298,7 @@ fn line_attacks(occ: u64, mask: &SMasks) -> u64 {
     let lower: u64 = mask.lower & occ;
     let upper: u64 = mask.upper & occ;
     let ms1_b = 0x8000000000000000 >> (lower | 1).leading_zeros();
-    let odiff = upper ^ upper.wrapping_sub(ms1_b);
+    let odiff = upper ^ (upper - ms1_b);
     mask.line_ex & odiff
 }
 

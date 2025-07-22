@@ -82,8 +82,8 @@ impl Square {
         BitBoard(1 << self.0)
     }
 
-    pub fn jump(self, rank_delta: i8, file_delta: i8) -> Self {
-        let file = (self.0 % 8) as i8 + rank_delta;
+    pub fn jump(self, file_delta: i8) -> Self {
+        let file = (self.0 % 8) as i8;
         let rank = (self.0 / 8) as i8 + file_delta;
         Self((rank * 8 + file) as u8)
     }
