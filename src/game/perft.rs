@@ -1,39 +1,10 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
 use std::time::Instant;
 
 use crate::game::board::Board;
-use crate::game::moves::Move;
 
 pub const BULK: bool = true;
 #[allow(unused)]
 pub const NO_BULK: bool = false;
-pub const NUM_THREADS: usize = 8;
-
-#[allow(unused)]
-pub fn perft_with_moves(board: &mut Board, depth: usize) -> u64 {
-    if depth == 0 {
-        return 1;
-    }
-    let moves = board.generate_legal_moves::<true>();
-    let mut total = 0;
-    if depth == 1 {
-        for m in &moves {
-            let mut new_board = *board;
-            new_board.make_move(m);
-            let count = perft_with_moves(&mut new_board, depth - 1);
-            println!("{m}: {count}");
-            total += count;
-        }
-    } else {
-        for m in &moves {
-            let mut new_board = *board;
-            new_board.make_move(m);
-            total += perft_with_moves(&mut new_board, depth - 1);
-        }
-    }
-    total
-}
 
 impl Board {
     fn perft_driver<const BULK_COUNT: bool>(
@@ -57,104 +28,35 @@ impl Board {
 
         let mut nodes = 0;
         for m in moves {
-            let mut new_board = *self;
-            new_board.make_move(m);
-            nodes += new_board.perft_driver::<BULK_COUNT>(depth - 1, level_counts);
+            let mut new = *self;
+            new.make_move(m);
+            nodes += new.perft_driver::<BULK_COUNT>(depth - 1, level_counts);
         }
         nodes
     }
 
-    pub fn perft<const BULK_COUNT: bool>(&mut self, depth: usize) -> u64 {
-        if depth == 0 {
-            return 1;
-        }
-
-        let moves = self.generate_legal_moves::<true>();
-        if moves.is_empty() {
-            return 0;
-        }
-
-        let moves_per_thread = moves.len().div_ceil(NUM_THREADS);
-
-        #[allow(clippy::type_complexity)]
-        let (tx, rx): (
-            Sender<(Move, u64, Vec<u64>)>,
-            Receiver<(Move, u64, Vec<u64>)>,
-        ) = channel();
-        let mut handles = Vec::new();
-        let mut total_level_counts = vec![0u64; depth];
+    pub fn perft<const BULK: bool>(&self, depth: usize) -> u64 {
+        let move_list = self.generate_legal_moves::<true>();
+        let mut total_nodes = 0;
+        let mut level_counts = vec![0; depth + 1]; // Initialize level_counts
 
         let start = Instant::now();
+        for m in move_list {
+            let mut board = *self;
+            board.make_move(m);
+            let nodes = board.perft_driver::<BULK>(depth - 1, &mut level_counts);
+            total_nodes += nodes;
 
-        for thread_id in 0..NUM_THREADS {
-            let start_idx = thread_id * moves_per_thread;
-            let end_idx = usize::min(start_idx + moves_per_thread, moves.len());
-            if start_idx >= moves.len() {
-                break;
-            }
-
-            let moves_chunk: Vec<Move> = moves.as_slice()[start_idx..end_idx].to_vec();
-            let board_clone = *self;
-            let tx_clone = tx.clone();
-
-            let handle = thread::spawn(move || {
-                let mut thread_level_counts = vec![0u64; depth];
-                for m in moves_chunk {
-                    let mut new_board = board_clone;
-                    new_board.make_move(m);
-                    let nodes =
-                        new_board.perft_driver::<BULK_COUNT>(depth - 1, &mut thread_level_counts);
-                    tx_clone
-                        .send((m, nodes, thread_level_counts.clone()))
-                        .expect("Failed to send result");
-                    thread_level_counts = vec![0u64; depth];
-                }
-            });
-            handles.push(handle);
+            println!("{m}: {nodes}");
         }
+        let duration = start.elapsed();
 
-        drop(tx);
-
-        let mut results = Vec::new();
-        while let Ok((m, nodes, thread_counts)) = rx.recv() {
-            results.push((m, nodes));
-            for (i, &count) in thread_counts.iter().enumerate() {
-                total_level_counts[i] += count;
-            }
-        }
-
-        for handle in handles {
-            handle.join().expect("Thread panicked");
-        }
-
-        total_level_counts[0] = moves.len() as u64;
-
-        let total_nodes: u64 = results.iter().map(|(_, nodes)| nodes).sum();
-        let total_duration = start.elapsed();
-
-        #[cfg(debug_assertions)]
-        {
-            for (m, nodes) in &results {
-                println!("{}{}: {}", m.get_source(), m.get_dest(), nodes);
-            }
-        }
-
-        println!("\nMoves per level:");
-        for (i, &count) in total_level_counts.iter().enumerate() {
-            println!("Depth {}: {} moves", i + 1, count);
-        }
-
-        let nodes_per_sec = if total_duration.as_micros() > 0 {
-            (total_nodes as f64 / total_duration.as_micros() as f64) * 1_000_000.0
+        let perf = if duration.as_micros() > 0 {
+            (total_nodes as u128) / duration.as_micros()
         } else {
-            0.0
+            0
         };
-        println!(
-            "\nTotal: {} nodes in {:.3}s - {:.2} Mnps",
-            total_nodes,
-            total_duration.as_secs_f64(),
-            nodes_per_sec / 1_000_000.0
-        );
+        println!("\n{total_nodes} nodes in {duration:?} - {perf} Mn/s");
 
         total_nodes
     }
@@ -170,7 +72,7 @@ mod tests {
         const PERFT_SUITE: [(&str, &str, u64, usize); 19] = [
             ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Startpos", 119060324, 6),
             ("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", "Kiwipete", 193690690, 5),
-            ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", "Rook and pawns Pos 3 CPW", 11030083, 6),
+            ("8/2p5/3p4/KP5r/1 Hawkins/8/4P1P1/8 w - - 0 1", "Rook and pawns Pos 3 CPW", 11030083, 6),
             ("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", "Pos 4 CPW", 15833292, 5),
             ("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", "Pos 5 CPW", 89941194, 5),
             ("8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1", "Illegal ep move #1", 14047573, 7),
@@ -187,7 +89,6 @@ mod tests {
             ("K1k5/8/P7/8/8/8/8/8 w - - 0 1", "Self stalemate", 5966690, 10),
             ("8/k1P5/8/1K6/8/8/8/8 w - - 0 1", "Stalemate & checkmate #1", 2518905, 8),
             ("8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1", "Stalemate & checkmate #2", 3114998, 6),
-
         ];
 
         let mut failures = Vec::new();
@@ -196,7 +97,7 @@ mod tests {
 
         for (fen, desc, expected, depth) in PERFT_SUITE {
             println!("\nTesting: {desc} ({fen})");
-            let mut board = Board::from_fen(fen);
+            let board = Board::from_fen(fen);
             let start = Instant::now();
             let nodes = board.perft::<BULK>(depth);
             let duration = start.elapsed();

@@ -30,7 +30,7 @@ impl Square {
     ///
     /// In debug mode, panics if the position string is not a valid chess square (e.g., "z9" or not exactly 2 characters).
     /// In release mode, assumes the input is valid and does not perform checks for performance.
-    pub fn from(pos: &str) -> Self {
+    pub const fn from(pos: &str) -> Self {
         #[cfg(debug_assertions)]
         {
             if pos.len() != 2 {
@@ -63,17 +63,17 @@ impl Square {
     }
 
     /// Creates a square from row (0-7) and column (0-7) coordinates.
-    pub fn from_row_col(row: usize, col: usize) -> Self {
+    pub const fn from_row_col(row: usize, col: usize) -> Self {
         Self((row * 8 + col) as u8)
     }
 
     /// Returns the row (rank) of the square (0-7, where 0 is rank 1).
-    pub fn row(&self) -> usize {
+    pub const fn row(&self) -> usize {
         self.0 as usize / 8
     }
 
     /// Returns the column (file) of the square (0-7, where 0 is file a).
-    pub fn col(&self) -> usize {
+    pub const fn col(&self) -> usize {
         self.0 as usize % 8
     }
 

@@ -74,7 +74,7 @@ impl Piece {
     ];
 
     /// Creates a `Piece` from an index into `Self::ALL`.
-    fn from(index: usize) -> Self {
+    const fn from(index: usize) -> Self {
         Self::ALL[index]
     }
 
