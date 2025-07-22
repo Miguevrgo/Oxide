@@ -243,13 +243,13 @@ impl std::fmt::Display for SearchData {
             let sign = if self.eval < 0 { "-" } else { "" };
             write!(
                 f,
-                "info depth {} score mate {sign}{mate_in} time {time} nodes {} nps {nps} pv {}",
+                "info depth {} score mate {sign}{mate_in} time {time} nodes {} nps {nps} pv{}",
                 self.depth, self.nodes, self.ply_data[0].pv
             )
         } else {
             write!(
                 f,
-                "info depth {} score cp {} time {time} nodes {} nps {nps} pv {}",
+                "info depth {} score cp {} time {time} nodes {} nps {nps} pv{}",
                 self.depth, self.eval, self.nodes, self.ply_data[0].pv
             )
         }

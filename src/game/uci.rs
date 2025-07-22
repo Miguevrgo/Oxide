@@ -2,8 +2,8 @@ use crate::engine::network::EvalTable;
 use crate::engine::search::{find_best_move, MAX_DEPTH};
 use crate::engine::tables::SearchData;
 use crate::game::piece::Colour;
+use std::env;
 use std::io::BufRead;
-use std::{env, time::Instant};
 
 use super::{
     board::Board,
@@ -219,27 +219,12 @@ impl UCIEngine {
 
     fn run_perft(&mut self, args: &[&str]) {
         let depth = if args.is_empty() {
-            8
+            7
         } else {
             args[0].parse().unwrap_or(8)
         };
 
-        let start = Instant::now();
-        let total_nodes = self.board.perft::<BULK>(depth);
-        let total_duration = start.elapsed();
-
-        let nodes_per_sec = if total_duration.as_micros() > 0 {
-            (total_nodes as f64 / total_duration.as_micros() as f64) * 1_000_000.0
-        } else {
-            0.0
-        };
-
-        println!(
-            "info string Total: {} nodes in {:.3}s - {:.2} Mnps",
-            total_nodes,
-            total_duration.as_secs_f64(),
-            nodes_per_sec / 1_000_000.0
-        );
+        self.board.perft::<BULK>(depth);
     }
 }
 
