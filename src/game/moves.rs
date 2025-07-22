@@ -216,7 +216,7 @@ impl Board {
         let promo_rank = BitBoard::PROMO_RANKS[colour as usize];
         let opponent = self.sides[!colour as usize];
 
-        let dest = src.jump(0, forward);
+        let dest = src.jump(forward);
         if !occ.get_bit(dest) {
             if promo_rank.get_bit(dest) {
                 moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
@@ -226,7 +226,7 @@ impl Board {
             } else if QUIET {
                 moves.push(Move::new(src, dest, MoveKind::Quiet));
                 if start_rank.get_bit(src) {
-                    let dbl = src.jump(0, 2 * forward);
+                    let dbl = src.jump(2 * forward);
                     if !occ.get_bit(dbl) {
                         moves.push(Move::new(src, dbl, MoveKind::DoublePush));
                     }
@@ -246,7 +246,7 @@ impl Board {
                         moves.push(Move::new(src, dest, MoveKind::Capture));
                     }
                 } else if self.en_passant == Some(dest) {
-                    let ep_target = dest.jump(0, -forward);
+                    let ep_target = dest.jump(-forward);
                     if opponent.get_bit(ep_target) {
                         moves.push(Move::new(src, dest, MoveKind::EnPassant));
                     }

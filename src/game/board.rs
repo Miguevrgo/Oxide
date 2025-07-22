@@ -118,7 +118,7 @@ impl Board {
 
                 if matches!(move_type, MoveKind::DoublePush) {
                     let delta = src_piece.colour().forward();
-                    self.en_passant = Some(src.jump(0, delta));
+                    self.en_passant = Some(src.jump(delta));
                     self.hash.hash_enpassant(self.en_passant.unwrap());
                 }
             }
@@ -128,7 +128,7 @@ impl Board {
                 self.set_piece(src_piece, dest);
             }
             MoveKind::EnPassant => {
-                let captured_pawn_square = dest.jump(0, -src_piece.colour().forward());
+                let captured_pawn_square = dest.jump(-src_piece.colour().forward());
                 self.remove_piece(captured_pawn_square);
                 self.remove_piece(src);
                 self.set_piece(src_piece, dest);
@@ -508,7 +508,7 @@ impl Board {
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
         let mut occs = occ.pop_bit(src).set_bit(dest);
         if mt == MoveKind::EnPassant {
-            let ep_dest = self.en_passant.unwrap().jump(0, (!self.side).forward());
+            let ep_dest = self.en_passant.unwrap().jump((!self.side).forward());
             occs = occs.pop_bit(ep_dest);
         }
 
