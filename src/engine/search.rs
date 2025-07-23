@@ -1,4 +1,4 @@
-use crate::engine::tables::{Bound, SearchData};
+use crate::engine::tables::{history_bonus, Bound, SearchData};
 use crate::game::moves::MoveKind;
 use crate::game::{board::Board, moves::Move};
 
@@ -295,8 +295,12 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                     killers[0] = m;
                 }
 
-                data.history[board.side as usize][m.get_source().index()][m.get_dest().index()] +=
-                    depth as i16 * depth as i16;
+                data.history.update(
+                    board.side,
+                    m.get_source().index(),
+                    m.get_dest().index(),
+                    history_bonus(depth),
+                );
             }
 
             break;
@@ -363,5 +367,5 @@ pub fn move_score(
         return KILL_SCORE;
     }
 
-    data.history[board.side as usize][m.get_source().index()][m.get_dest().index()] as i32
+    data.history.score[board.side as usize][m.get_source().index()][m.get_dest().index()] as i32
 }

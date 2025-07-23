@@ -1,6 +1,7 @@
 use crate::engine::search::{INF, MATE, MAX_DEPTH};
 use crate::game::board::Board;
 use crate::game::moves::{Move, MoveList};
+use crate::game::piece::Colour;
 use std::time::Instant;
 
 use super::network::EvalTable;
@@ -112,6 +113,47 @@ impl TranspositionTable {
     }
 }
 
+const HISTORY_MAX_BONUS: i16 = 1600;
+const HISTORY_FACTOR: i16 = 350;
+const HISTORY_OFFSET: i16 = 350;
+pub const MAX_HISTORY: i32 = 8192;
+
+/// History Gravity bonus
+/// https://www.chessprogramming.org/History_Heuristic
+pub fn history_bonus(depth: u8) -> i16 {
+    HISTORY_MAX_BONUS.min(HISTORY_FACTOR * depth as i16 - HISTORY_OFFSET)
+}
+
+/// Taper history so it clamps to MAX
+/// From Carp, which in turn is from talkchess
+const fn taper_bonus<const MAX: i32>(bonus: i16, old: i16) -> i16 {
+    let o = old as i32;
+    let b = bonus as i32;
+
+    (o + b - (o * b.abs()) / MAX) as i16
+}
+
+pub struct HistoryTable {
+    pub score: [[[i16; 64]; 64]; 2], // [side][src][dest]
+}
+
+impl HistoryTable {
+    pub fn update(&mut self, side: Colour, src: usize, dest: usize, bonus: i16) {
+        let c_bonus = bonus.clamp(-MAX_HISTORY as i16, MAX_HISTORY as i16);
+        let old_score = &mut self.score[side as usize][src][dest];
+
+        *old_score = taper_bonus::<MAX_HISTORY>(c_bonus, *old_score);
+    }
+}
+
+impl Default for HistoryTable {
+    fn default() -> Self {
+        Self {
+            score: [[[0; 64]; 64]; 2],
+        }
+    }
+}
+
 pub const MAX_PLY: usize = 128;
 
 #[derive(Clone, Copy, Default)]
@@ -139,7 +181,7 @@ pub struct SearchData {
     pub ply_data: [PlyData; MAX_PLY],
     pub tt: TranspositionTable,
     pub cache: EvalTable,
-    pub history: [[[i16; 64]; 64]; 2], // [colour][src][dest]
+    pub history: HistoryTable,
 }
 
 impl SearchData {
@@ -159,7 +201,7 @@ impl SearchData {
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
             tt: TranspositionTable::with_size_mb(16),
             cache: EvalTable::default(),
-            history: [[[0; 64]; 64]; 2],
+            history: HistoryTable::default(),
         }
     }
 
@@ -175,6 +217,7 @@ impl SearchData {
 
     fn decay_history(&mut self) {
         self.history
+            .score
             .iter_mut()
             .flatten()
             .flatten()
