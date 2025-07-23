@@ -1,4 +1,6 @@
-use crate::engine::search::{INF, MATE, MAX_DEPTH};
+use crate::engine::search::{
+    HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, MATE, MAX_DEPTH, MAX_HISTORY,
+};
 use crate::game::board::Board;
 use crate::game::moves::{Move, MoveList};
 use crate::game::piece::Colour;
@@ -113,11 +115,6 @@ impl TranspositionTable {
     }
 }
 
-const HISTORY_MAX_BONUS: i16 = 1600;
-const HISTORY_FACTOR: i16 = 350;
-const HISTORY_OFFSET: i16 = 350;
-pub const MAX_HISTORY: i32 = 8192;
-
 /// History Gravity bonus
 /// https://www.chessprogramming.org/History_Heuristic
 pub fn history_bonus(depth: u8) -> i16 {
@@ -138,11 +135,22 @@ pub struct HistoryTable {
 }
 
 impl HistoryTable {
-    pub fn update(&mut self, side: Colour, src: usize, dest: usize, bonus: i16) {
+    /// Updating history values, for the cutoff move a bonus and for the rest of the quiets tried,
+    /// a history maluse, using history gravity formula
+    pub fn update(&mut self, side: Colour, src: usize, dest: usize, bonus: i16, quiets: Vec<Move>) {
         let c_bonus = bonus.clamp(-MAX_HISTORY as i16, MAX_HISTORY as i16);
-        let old_score = &mut self.score[side as usize][src][dest];
 
+        // Update the current best move with positive bonus
+        let old_score = &mut self.score[side as usize][src][dest];
         *old_score = taper_bonus::<MAX_HISTORY>(c_bonus, *old_score);
+
+        // Update all other quiet moves with negative bonus
+        for m in quiets {
+            let m_src = m.get_source();
+            let m_dest = m.get_dest();
+            let old = &mut self.score[side as usize][m_src.index()][m_dest.index()];
+            *old = taper_bonus::<MAX_HISTORY>(-c_bonus, *old);
+        }
     }
 }
 
@@ -212,16 +220,6 @@ impl SearchData {
         self.nodes = 0;
         self.ply = 0;
         self.timing = Instant::now();
-        self.decay_history();
-    }
-
-    fn decay_history(&mut self) {
-        self.history
-            .score
-            .iter_mut()
-            .flatten()
-            .flatten()
-            .for_each(|v| *v /= 2);
     }
 
     pub fn push(&mut self, hash: u64) {

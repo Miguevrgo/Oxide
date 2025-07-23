@@ -30,6 +30,11 @@ const LMR_BASE: f64 = 0.55;
 const RAZOR_DEPTH: u8 = 3;
 const RAZOR_MARGIN: i32 = 420;
 
+pub const HISTORY_MAX_BONUS: i16 = 1500;
+pub const HISTORY_FACTOR: i16 = 355;
+pub const HISTORY_OFFSET: i16 = 345;
+pub const MAX_HISTORY: i32 = 8192;
+
 pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
     data.start_search();
 
@@ -235,6 +240,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let lmr_ready = depth > 1 && !in_check;
     let lmr_depth = (depth as f64).ln() / (LMR_DIV);
     let can_prune = !pv_node && !in_check;
+    let mut quiets_tried = Vec::with_capacity(16);
     data.push(key);
 
     while let Some((m, ms)) = moves.pick(&mut scores) {
@@ -300,10 +306,15 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                     m.get_source().index(),
                     m.get_dest().index(),
                     history_bonus(depth),
+                    quiets_tried,
                 );
             }
 
             break;
+        }
+
+        if !m.get_type().is_capture() {
+            quiets_tried.push(m);
         }
     }
 
