@@ -33,6 +33,7 @@ const RAZOR_MARGIN: i32 = 420;
 pub const HISTORY_MAX_BONUS: i16 = 1500;
 pub const HISTORY_FACTOR: i16 = 355;
 pub const HISTORY_OFFSET: i16 = 345;
+pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
 pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
@@ -241,6 +242,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let lmr_depth = (depth as f64).ln() / (LMR_DIV);
     let can_prune = !pv_node && !in_check;
     let mut quiets_tried = Vec::with_capacity(16);
+    let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
 
     while let Some((m, ms)) = moves.pick(&mut scores) {
@@ -301,13 +303,17 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                     killers[0] = m;
                 }
 
+                let history_bonus = history_bonus(depth);
+
                 data.history.update(
                     board.side,
                     m.get_source().index(),
                     m.get_dest().index(),
-                    history_bonus(depth),
+                    history_bonus,
                     quiets_tried,
                 );
+
+                data.cap_history.update(board, m, history_bonus, caps_tried);
             }
 
             break;
@@ -315,6 +321,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
         if !m.get_type().is_capture() {
             quiets_tried.push(m);
+        } else {
+            caps_tried.push(m);
         }
     }
 
@@ -369,6 +377,8 @@ pub fn move_score(
     if kind.is_capture() {
         let see = board.see(*m, 0);
         return CAP_SCORE * see as i32 + mvv_lva(*m, board);
+        //TODO: data.cap_history.score[board.piece_at(m.get_source()) as usize][m.get_dest().index()]
+        //    [board.capture_piece(*m).index()] as i32;
     }
 
     let killers = data.ply_data[ply].killers;
