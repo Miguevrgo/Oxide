@@ -7,6 +7,7 @@ use crate::game::piece::Colour;
 use std::time::Instant;
 
 use super::network::EvalTable;
+use super::search::MAX_CAP_HISTORY;
 
 /// Transposition Table
 #[derive(Copy, Clone, PartialEq)]
@@ -146,9 +147,7 @@ impl HistoryTable {
 
         // Update all other quiet moves with negative bonus
         for m in quiets {
-            let m_src = m.get_source();
-            let m_dest = m.get_dest();
-            let old = &mut self.score[side as usize][m_src.index()][m_dest.index()];
+            let old = &mut self.score[side as usize][m.get_source().index()][m.get_dest().index()];
             *old = taper_bonus::<MAX_HISTORY>(-c_bonus, *old);
         }
     }
@@ -157,7 +156,39 @@ impl HistoryTable {
 impl Default for HistoryTable {
     fn default() -> Self {
         Self {
-            score: [[[0; 64]; 64]; 2],
+            score: [[[0; 64]; 64]; 2], // [capturing_piece][dest][captured]
+        }
+    }
+}
+
+pub struct CaptureHistoryTable {
+    pub score: [[[i16; 5]; 64]; 12],
+}
+
+impl CaptureHistoryTable {
+    pub fn update(&mut self, board: &Board, m: Move, bonus: i16, captures: Vec<Move>) {
+        let c_bonus = bonus.clamp(-MAX_CAP_HISTORY as i16, MAX_CAP_HISTORY as i16);
+
+        // Update the best move with a positive bonus
+        if m.get_type().is_capture() {
+            let old_score = &mut self.score[board.piece_at(m.get_source()) as usize]
+                [m.get_dest().index()][board.capture_piece(m).index()];
+            *old_score = taper_bonus::<MAX_CAP_HISTORY>(c_bonus, *old_score);
+        }
+
+        // Update all other capture moves with negative bonus
+        for mov in captures {
+            let old = &mut self.score[board.piece_at(mov.get_source()) as usize]
+                [mov.get_dest().index()][board.capture_piece(mov).index()];
+            *old = taper_bonus::<MAX_CAP_HISTORY>(-c_bonus, *old);
+        }
+    }
+}
+
+impl Default for CaptureHistoryTable {
+    fn default() -> Self {
+        Self {
+            score: [[[0; 5]; 64]; 12],
         }
     }
 }
@@ -190,6 +221,7 @@ pub struct SearchData {
     pub tt: TranspositionTable,
     pub cache: EvalTable,
     pub history: HistoryTable,
+    pub cap_history: CaptureHistoryTable,
 }
 
 impl SearchData {
@@ -210,6 +242,7 @@ impl SearchData {
             tt: TranspositionTable::with_size_mb(16),
             cache: EvalTable::default(),
             history: HistoryTable::default(),
+            cap_history: CaptureHistoryTable::default(),
         }
     }
 

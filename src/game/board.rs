@@ -50,6 +50,17 @@ impl Board {
         self.piece_map[square.index()]
     }
 
+    pub fn capture_piece(&self, m: Move) -> Piece {
+        if m.get_type() == MoveKind::EnPassant {
+            match self.side {
+                Colour::Black => Piece::WP,
+                Colour::White => Piece::BP,
+            }
+        } else {
+            self.piece_at(m.get_dest())
+        }
+    }
+
     fn set_piece(&mut self, piece: Piece, square: Square) {
         let colour = piece.colour() as usize;
         self.sides[colour] = self.sides[colour].set_bit(square);
