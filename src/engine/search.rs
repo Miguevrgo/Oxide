@@ -296,6 +296,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         alpha = alpha.max(score);
 
         if alpha >= beta {
+            let history_bonus = history_bonus(depth);
             if !m.get_type().is_capture() {
                 let killers = &mut data.ply_data[data.ply].killers;
                 if killers[0] != m {
@@ -303,18 +304,16 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                     killers[0] = m;
                 }
 
-                let history_bonus = history_bonus(depth);
-
                 data.history.update(
                     board.side,
                     m.get_source().index(),
                     m.get_dest().index(),
                     history_bonus,
-                    quiets_tried,
+                    &quiets_tried,
                 );
-
-                data.cap_history.update(board, m, history_bonus, caps_tried);
             }
+            data.cap_history
+                .update(board, m, history_bonus, &caps_tried);
 
             break;
         }
@@ -376,9 +375,10 @@ pub fn move_score(
 
     if kind.is_capture() {
         let see = board.see(*m, 0);
-        return CAP_SCORE * see as i32 + mvv_lva(*m, board);
-        //TODO: data.cap_history.score[board.piece_at(m.get_source()) as usize][m.get_dest().index()]
-        //    [board.capture_piece(*m).index()] as i32;
+        return CAP_SCORE * see as i32
+            + mvv_lva(*m, board)
+            + data.cap_history.score[board.piece_at(m.get_source()) as usize][m.get_dest().index()]
+                [board.capture_piece(*m).index()] as i32;
     }
 
     let killers = data.ply_data[ply].killers;
