@@ -138,7 +138,14 @@ pub struct HistoryTable {
 impl HistoryTable {
     /// Updating history values, for the cutoff move a bonus and for the rest of the quiets tried,
     /// a history maluse, using history gravity formula
-    pub fn update(&mut self, side: Colour, src: usize, dest: usize, bonus: i16, quiets: Vec<Move>) {
+    pub fn update(
+        &mut self,
+        side: Colour,
+        src: usize,
+        dest: usize,
+        bonus: i16,
+        quiets: &Vec<Move>,
+    ) {
         let c_bonus = bonus.clamp(-MAX_HISTORY as i16, MAX_HISTORY as i16);
 
         // Update the current best move with positive bonus
@@ -166,7 +173,7 @@ pub struct CaptureHistoryTable {
 }
 
 impl CaptureHistoryTable {
-    pub fn update(&mut self, board: &Board, m: Move, bonus: i16, captures: Vec<Move>) {
+    pub fn update(&mut self, board: &Board, m: Move, bonus: i16, captures: &Vec<Move>) {
         let c_bonus = bonus.clamp(-MAX_CAP_HISTORY as i16, MAX_CAP_HISTORY as i16);
 
         // Update the best move with a positive bonus
@@ -179,7 +186,7 @@ impl CaptureHistoryTable {
         // Update all other capture moves with negative bonus
         for mov in captures {
             let old = &mut self.score[board.piece_at(mov.get_source()) as usize]
-                [mov.get_dest().index()][board.capture_piece(mov).index()];
+                [mov.get_dest().index()][board.capture_piece(*mov).index()];
             *old = taper_bonus::<MAX_CAP_HISTORY>(-c_bonus, *old);
         }
     }
