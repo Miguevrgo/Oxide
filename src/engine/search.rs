@@ -159,7 +159,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let key = board.hash.0;
     data.ply_data[data.ply].pv.clear();
 
-    if data.ply > 0 {
+    if data.ply > 0 && depth < MAX_DEPTH {
         if board.is_draw() || data.is_repetition(board, key, false) {
             return DRAW;
         }
