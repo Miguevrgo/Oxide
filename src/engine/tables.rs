@@ -163,13 +163,13 @@ impl HistoryTable {
 impl Default for HistoryTable {
     fn default() -> Self {
         Self {
-            score: [[[0; 64]; 64]; 2], // [capturing_piece][dest][captured]
+            score: [[[0; 64]; 64]; 2],
         }
     }
 }
 
 pub struct CaptureHistoryTable {
-    pub score: [[[i16; 5]; 64]; 12],
+    pub score: [[[i16; 5]; 64]; 12], // [capturing_piece][dest][captured]
 }
 
 impl CaptureHistoryTable {

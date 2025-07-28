@@ -236,7 +236,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     let old_alpha = alpha;
     let mut best_move = Move::NULL;
-    let mut max_score = -INF;
+    let mut best_score = -INF;
     let mut move_idx = 0;
     let lmr_ready = depth > 1 && !in_check;
     let lmr_depth = (depth as f64).ln() / (LMR_DIV);
@@ -246,7 +246,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     data.push(key);
 
     while let Some((m, ms)) = moves.pick(&mut scores) {
-        if can_prune && max_score < MATE && depth <= 2 && ms < -2000 {
+        if can_prune && best_score < MATE && depth <= 2 && ms < -2000 {
             break;
         }
 
@@ -283,8 +283,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             zw_search
         };
 
-        if score > max_score {
-            max_score = score;
+        if score > best_score {
+            best_score = score;
             best_move = m;
             if pv_node {
                 let pre_line = data.ply_data[data.ply].pv;
@@ -331,22 +331,22 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         return 0;
     }
 
-    let bound = if max_score <= old_alpha {
+    let bound = if best_score <= old_alpha {
         Bound::Upper
-    } else if max_score >= beta {
+    } else if best_score >= beta {
         Bound::Lower
     } else {
         Bound::Exact
     };
 
     data.tt
-        .insert(key, bound, best_move, max_score, depth, pv_node);
+        .insert(key, bound, best_move, best_score, depth, pv_node);
 
     if data.ply == 0 {
         data.best_move = best_move
     }
 
-    max_score
+    best_score
 }
 
 #[inline]
