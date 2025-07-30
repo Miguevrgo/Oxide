@@ -246,8 +246,11 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     data.push(key);
 
     while let Some((m, ms)) = moves.pick(&mut scores) {
-        if can_prune && best_score < MATE && depth <= 2 && ms < -2000 {
-            break;
+        if can_prune && best_score.abs() < MATE {
+            // History pruning
+            if depth <= 2 && ms < -4000 {
+                break;
+            }
         }
 
         let mut new_board = *board;
