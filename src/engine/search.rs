@@ -171,8 +171,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     if depth == 0 {
         return quiescence(board, alpha, beta, data);
-    } else if board.is_draw() {
-        return DRAW;
     }
 
     let pv_node = beta > alpha + 1;
