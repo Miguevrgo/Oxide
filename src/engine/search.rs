@@ -14,21 +14,22 @@ const CAP_SCORE: i32 = 90_000;
 const KILL_SCORE: i32 = 70_000;
 
 // Search Parameters
-const ASPIRATION_DELTA: i32 = 50;
-const ASPIRATION_DELTA_LIMIT: i32 = 400;
+const ASPIRATION_DELTA: i32 = 53;
+const ASPIRATION_DELTA_LIMIT: i32 = 447;
 
-const NMP_MIN_DEPTH: u8 = 3;
-const NMP_BASE_REDUCTION: u8 = 4;
+const NMP_MIN_DEPTH: u8 = 2;
+const NMP_BASE_REDUCTION: u8 = 5;
 const NMP_DIVISOR: u8 = 4;
 
-const RFP_DEPTH: u8 = 8;
-const RFP_IMPROVING: i32 = 50;
-const RFP_MARGIN: i32 = 90;
-const LMR_DIV: f64 = 2.55;
-const LMR_BASE: f64 = 0.55;
+const RFP_DEPTH: u8 = 7;
+const RFP_IMPROVING: i32 = 34;
+const RFP_MARGIN: i32 = 75;
+const LMR_DIV: f64 = 1.96;
+const LMR_BASE: f64 = 0.74;
 
-const RAZOR_DEPTH: u8 = 3;
-const RAZOR_MARGIN: i32 = 420;
+const RAZOR_DEPTH: u8 = 2;
+const RAZOR_MARGIN: i32 = 412;
+const HP_THRESHOLD: i32 = -3297;
 
 pub const HISTORY_MAX_BONUS: i16 = 1500;
 pub const HISTORY_FACTOR: i16 = 355;
@@ -248,7 +249,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     while let Some((m, ms)) = moves.pick(&mut scores) {
         if can_prune && best_score.abs() < MATE {
             // History pruning
-            if depth <= 2 && ms < -4000 {
+            if depth <= 2 && ms < HP_THRESHOLD {
                 break;
             }
         }
