@@ -3,13 +3,17 @@ use std::arch::x86_64::*;
 // Square: 0-63
 // Piece: Pawn = 0, Knight = 1, Bishop = 2, Rook = 3, Queen = 4, King = 5
 // Side: White = 0, Black = 1
+// Network (768x4 -> 1024)x2 -> 1
 const INPUT_SIZE: usize = 768;
 pub const HL_SIZE: usize = 1024;
 
-const SCALE: i32 = 400;
+// Quantization factors
 const QA: i32 = 255;
 const QB: i32 = 64;
 const QAB: i32 = QA * QB;
+
+// Scaling factor
+const SCALE: i32 = 400;
 const NUM_BUCKETS: usize = 4;
 
 #[rustfmt::skip]
@@ -44,15 +48,17 @@ impl Network {
         }
     }
 
-    pub fn get_bucket<const SIDE: usize>(mut king_sq: usize) -> usize {
-        if SIDE == 1 {
-            king_sq ^= 0b111000;
-        }
-
-        BUCKETS[king_sq]
+    #[inline]
+    #[rustfmt::skip]
+    pub const fn get_bucket<const SIDE: usize>(king_sq: usize) -> usize {
+        BUCKETS[if SIDE == 1 { king_sq ^ 0b111000 } else { king_sq }]
     }
 
-    pub fn get_base_index<const SIDE: usize>(side: usize, pc: usize, mut king_sq: usize) -> usize {
+    pub const fn get_base_index<const SIDE: usize>(
+        side: usize,
+        pc: usize,
+        mut king_sq: usize,
+    ) -> usize {
         if king_sq % 8 > 3 {
             king_sq ^= 7;
         }
@@ -72,35 +78,40 @@ pub struct Accumulator {
 }
 
 impl Accumulator {
+    #[inline]
     pub fn update_multi(&mut self, adds: &[u16], subs: &[u16]) {
         const REGS: usize = 8;
-        const PER: usize = REGS * 16;
+        const PER: usize = 128;
+        const ITERATIONS: usize = 8;
 
-        let mut regs = [0i16; PER];
+        unsafe {
+            for i in 0..ITERATIONS {
+                let offset = i * PER;
+                let mut regs = [_mm256_setzero_si256(); REGS];
 
-        for i in 0..HL_SIZE / PER {
-            let offset = PER * i;
-
-            for (j, reg) in regs.iter_mut().enumerate() {
-                *reg = self.vals[offset + j];
-            }
-
-            for &add in adds {
-                let weights = &NNUE.feature_weights[usize::from(add)];
                 for (j, reg) in regs.iter_mut().enumerate() {
-                    *reg += weights.vals[offset + j];
+                    *reg = _mm256_load_si256(self.vals.as_ptr().add(offset + j * 16).cast());
                 }
-            }
 
-            for &sub in subs {
-                let weights = &NNUE.feature_weights[usize::from(sub)];
-                for (j, reg) in regs.iter_mut().enumerate() {
-                    *reg -= weights.vals[offset + j];
+                for &add in adds {
+                    let weights = NNUE.feature_weights[add as usize].vals.as_ptr().add(offset);
+                    for (j, reg) in regs.iter_mut().enumerate() {
+                        let w = _mm256_load_si256(weights.add(j * 16).cast());
+                        *reg = _mm256_add_epi16(*reg, w);
+                    }
                 }
-            }
 
-            for (j, reg) in regs.iter().enumerate() {
-                self.vals[offset + j] = *reg;
+                for &sub in subs {
+                    let weights = NNUE.feature_weights[sub as usize].vals.as_ptr().add(offset);
+                    for (j, reg) in regs.iter_mut().enumerate() {
+                        let w = _mm256_load_si256(weights.add(j * 16).cast());
+                        *reg = _mm256_sub_epi16(*reg, w);
+                    }
+                }
+
+                for (j, reg) in regs.iter().enumerate() {
+                    _mm256_store_si256(self.vals.as_mut_ptr().add(offset + j * 16).cast(), *reg);
+                }
             }
         }
     }
@@ -112,6 +123,7 @@ impl Default for Accumulator {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct EvalEntry {
     pub bbs: [u64; 8], // Bitboards for pieces and sides
     pub white: Accumulator,
@@ -119,20 +131,20 @@ pub struct EvalEntry {
 }
 
 pub struct EvalTable {
-    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
+    pub table: [[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS],
 }
 
 impl Default for EvalTable {
     fn default() -> Self {
-        let mut table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]> =
-            unsafe { boxed_and_zeroed() };
-        for row in table.iter_mut() {
-            for entry in row.iter_mut() {
-                entry.white = Accumulator::default();
-                entry.black = Accumulator::default();
-            }
+        let bias = NNUE.feature_bias;
+        let entry = EvalEntry {
+            bbs: [0; 8],
+            white: bias,
+            black: bias,
+        };
+        Self {
+            table: [[entry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS],
         }
-        Self { table }
     }
 }
 
@@ -170,13 +182,4 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
     _mm_cvtsi128_si32(sum_32)
-}
-
-unsafe fn boxed_and_zeroed<T>() -> Box<T> {
-    let layout = std::alloc::Layout::new::<T>();
-    let ptr = std::alloc::alloc_zeroed(layout);
-    if ptr.is_null() {
-        std::alloc::handle_alloc_error(layout);
-    }
-    Box::from_raw(ptr.cast())
 }
