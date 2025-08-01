@@ -13,7 +13,7 @@
 
 ## Overview
 
-`Oxide` started as a simple terminal-based chess project in my personal repository [Projects](https://github.com/Miguevrgo/Projects), but it evolved into something much bigger. A professor proposed it as a challenge, and I took it seriously, transforming it from a basic command-line game into a fully-fledged UCI-compliant chess engine written in Rust. The goal? To learn, to enjoy coding something complex without a GUI, and to build a clean, efficient, and readable piece of software.
+`Oxide` started as a simple terminal-based chess project in my personal repository [Projects](https://github.com/Miguevrgo/Projects), but it evolved into something much bigger. A professor proposed it as a challenge, and I took it seriously, transforming it from a basic command-line game into a competitive UCI chess engine. The goal? To learn, to enjoy coding something complex without a GUI, and to build a clean, efficient, and readable piece of software.
 
 This engine is designed to be both a learning experience and a playground for exploring chess programming. It leverages bitboards for board representation, implements move generation with obstruction difference techniques, and aims to balance simplicity with performance. Whether you're a chess enthusiast or a Rust programmer, I hope you find something interesting here!
 
@@ -22,23 +22,24 @@ This engine is designed to be both a learning experience and a playground for ex
 - **Complete Chess Implementation:** Fully functional chess rules, including castling, en passant, promotions, and check/checkmate detection.
 - **Bitboards:** Efficient board representation using bitboards for fast move generation and evaluation.
 - **Obstruction Difference:** Move generation optimized with obstruction difference for sliding pieces.
-- **UCI Compliance:** Generally compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI. Missing threads, table size options
-- **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning for efficiency, enhanced with several techniques, using a single thread for more comprehensive read.
+- **UCI Compliance:** Generally compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI.
+- **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning with search enhancements, single-threaded for more comprehensive read.
 - **Simplicity & Readability:** Codebase designed to be as straightforward as possible while maintaining decent performance.
-- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), and engines like [Carp](https://github.com/dede1751/carp) and [Akimbo](https://github.com/jnlt3/akimbo), to whom I the implementation for the NNUE ⚠️ The Oxide nets provided with the release are trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets and [bullet](https://github.com/jw1912/bullet).
+- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), top engines like [Carp](https://github.com/dede1751/carp),[Berserk](https://github.com/jhonnold/berserk) and [Akimbo](https://github.com/jw1912/akimbo), which was heavily consulted for the network implementation, The Oxide net provided with the release is trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets and [bullet](https://github.com/jw1912/bullet) trainer.
 
 ## Objectives & Planned Improvements
 
-`Oxide` is a work in progress with clear goals and some fixes on the horizon:
+`Oxide` is now a decent engine, however there is still room for improvement:
 
-- **Expand UCI Features:** Include additional info (seldepth).
-- **Enhance Search:** Several search improvements have been made, some of them require another check, some tweaking, etc. Looking forward to implement some tables.
-- **NNUE** Use a new approach.
+- **Enhance Search:** Using tables such as continuation history and correction history. Testing some prunings for the negamax move loop.
+- **NNUE**: I am finally confident that I understand each of the techniques used in Oxide network, however I would like testing other configurations,
+maybe multilayer, bigger hidden layer, 8 buckets...
+
 ## Getting Started
 
 ### Prerequisites
 - Rust (stable, install via [rustup](https://rustup.rs/)).
-- A UCI-compatible GUI (e.g., [CuteChess](https://cutechess.com/)).
+- (If you want a GUI) An UCI compliant (e.g., [CuteChess](https://cutechess.com/)).
 
 ### Build & Run
    ```bash
@@ -47,11 +48,11 @@ This engine is designed to be both a learning experience and a playground for ex
    RUSTFLAGS="-C target-cpu=native" cargo build --release
    ./target/release/oxide
 ```
-If you want to make a perft test just run:
+If you want to perform a perft test or benchmark just run:
+```bash
+  RUSTFLAGS="-C target-cpu=native" cargo test --release -- --nocapture
 ```
-  cargo test --release -- --nocapture
-```
-Or you can directly use the perft UCI command.
+If you prefer a given position test, you can use the UCI interface
 
 
 [license-badge]:https://img.shields.io/github/license/miguevrgo/Oxide?style=for-the-badge&label=license&color=success
