@@ -72,7 +72,7 @@ mod tests {
         const PERFT_SUITE: [(&str, &str, u64, usize); 19] = [
             ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Startpos", 119060324, 6),
             ("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", "Kiwipete", 193690690, 5),
-            ("8/2p5/3p4/KP5r/1 Hawkins/8/4P1P1/8 w - - 0 1", "Rook and pawns Pos 3 CPW", 11030083, 6),
+            ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", "Rook and pawns Pos 3 CPW", 11030083, 6),
             ("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", "Pos 4 CPW", 15833292, 5),
             ("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", "Pos 5 CPW", 89941194, 5),
             ("8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1", "Illegal ep move #1", 14047573, 7),
