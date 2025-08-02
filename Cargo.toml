@@ -10,4 +10,3 @@ debug = false
 rpath = false
 debug-assertions = false
 codegen-units = 1
-lto = true
