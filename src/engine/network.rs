@@ -148,14 +148,16 @@ impl Default for EvalTable {
     }
 }
 
+#[inline]
 pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const CHUNK: usize = 16;
+    const NUM_ITERS: usize = HL_SIZE / CHUNK;
 
     let mut sum = _mm256_setzero_si256();
     let min = _mm256_setzero_si256();
     let max = _mm256_set1_epi16(QA as i16);
 
-    for i in 0..HL_SIZE / CHUNK {
+    for i in 0..NUM_ITERS {
         let mut v = load_i16s(acc, i * CHUNK);
         v = _mm256_min_epi16(_mm256_max_epi16(v, min), max);
         let w = load_i16s(weights, i * CHUNK);
