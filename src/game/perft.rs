@@ -2,61 +2,39 @@ use std::time::Instant;
 
 use crate::game::board::Board;
 
-pub const BULK: bool = true;
-#[allow(unused)]
-pub const NO_BULK: bool = false;
-
 impl Board {
-    fn perft_driver<const BULK_COUNT: bool>(
-        &mut self,
-        depth: usize,
-        level_counts: &mut Vec<u64>,
-    ) -> u64 {
+    fn bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
         if depth == 0 {
             return 1;
         }
 
+        let mut total = 0;
         let moves = self.generate_legal_moves::<true>();
-        let current_level = level_counts.len() - depth;
-        if current_level < level_counts.len() {
-            level_counts[current_level] += moves.len() as u64;
+        for m in &moves {
+            if depth == 1 {
+                return moves.len();
+            } else {
+                let mut new = *self;
+                new.make_move(m);
+                let count = new.bulk_perft::<false>(depth - 1);
+
+                total += count;
+
+                if ROOT {
+                    println!("{m}: {count}")
+                }
+            }
         }
 
-        if BULK_COUNT && depth == 1 {
-            return moves.len() as u64;
-        }
-
-        let mut nodes = 0;
-        for m in moves {
-            let mut new = *self;
-            new.make_move(m);
-            nodes += new.perft_driver::<BULK_COUNT>(depth - 1, level_counts);
-        }
-        nodes
+        total
     }
 
-    pub fn perft<const BULK: bool>(&self, depth: usize) -> u64 {
-        let move_list = self.generate_legal_moves::<true>();
-        let mut total_nodes = 0;
-        let mut level_counts = vec![0; depth + 1]; // Initialize level_counts
-
+    pub fn perft(&self, depth: usize) -> usize {
         let start = Instant::now();
-        for m in move_list {
-            let mut board = *self;
-            board.make_move(m);
-            let nodes = board.perft_driver::<BULK>(depth - 1, &mut level_counts);
-            total_nodes += nodes;
-
-            println!("{m}: {nodes}");
-        }
-        let duration = start.elapsed();
-
-        let perf = if duration.as_micros() > 0 {
-            (total_nodes as u128) / duration.as_micros()
-        } else {
-            0
-        };
-        println!("\n{total_nodes} nodes in {duration:?} - {perf} Mn/s");
+        let total_nodes = self.bulk_perft::<true>(depth);
+        let duration = start.elapsed().as_millis() as usize;
+        let perft = total_nodes / duration / 1_000;
+        println!("\n{total_nodes} nodes in {duration:?} - {perft} Mn/s");
 
         total_nodes
     }
@@ -69,7 +47,7 @@ mod tests {
     #[test]
     fn test_perft_suite() {
         #[rustfmt::skip]
-        const PERFT_SUITE: [(&str, &str, u64, usize); 19] = [
+        const PERFT_SUITE: [(&str, &str, usize, usize); 19] = [
             ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Startpos", 119060324, 6),
             ("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", "Kiwipete", 193690690, 5),
             ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", "Rook and pawns Pos 3 CPW", 11030083, 6),
@@ -99,7 +77,7 @@ mod tests {
             println!("\nTesting: {desc} ({fen})");
             let board = Board::from_fen(fen);
             let start = Instant::now();
-            let nodes = board.perft::<BULK>(depth);
+            let nodes = board.perft(depth);
             let duration = start.elapsed();
 
             let nodes_per_sec = if duration.as_micros() > 0 {

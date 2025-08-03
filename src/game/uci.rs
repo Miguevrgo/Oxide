@@ -8,7 +8,6 @@ use std::io::BufRead;
 use super::{
     board::Board,
     moves::{Move, MoveKind},
-    perft::BULK,
     square::Square,
 };
 
@@ -224,7 +223,7 @@ impl UCIEngine {
             args[0].parse().unwrap_or(8)
         };
 
-        self.board.perft::<BULK>(depth);
+        self.board.perft(depth);
     }
 }
 
