@@ -1,3 +1,5 @@
+use std::hint::unreachable_unchecked;
+
 use crate::game::square::Square;
 
 use super::{
@@ -54,7 +56,7 @@ impl Move {
             0b1110 => MoveKind::RookCapPromo,
             0b1111 => MoveKind::QueenCapPromo,
 
-            _ => unreachable!(),
+            _ => unsafe { unreachable_unchecked() },
         }
     }
 }
