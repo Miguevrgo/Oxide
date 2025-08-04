@@ -15,7 +15,7 @@ impl ZHash {
     pub fn new(board: &Board) -> Self {
         let mut hash = Self::NULL;
 
-        for square in 0..Square::COUNT {
+        for square in 0..64 {
             if board.piece_at(Square::new(square)) != Piece::Empty {
                 hash.hash_piece(board.piece_at(Square::new(square)), Square::new(square));
             }

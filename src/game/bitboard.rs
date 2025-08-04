@@ -1,5 +1,7 @@
 use crate::game::square::Square;
 
+use super::piece::Colour;
+
 /// A 64-bit representation of a chess board, where each bit corresponds to a square.
 /// A `1` indicates the presence of a piece, and a `0` indicates an empty square.
 ///
@@ -152,7 +154,15 @@ impl BitBoard {
     ///
     /// Panics if the bitboard is empty (no bits set).
     pub fn lsb(self) -> Square {
-        Square::new(self.0.trailing_zeros() as usize)
+        Square::new(self.0.trailing_zeros() as u8)
+    }
+
+    pub fn shift(self, colour: Colour) -> Self {
+        if colour == Colour::White {
+            BitBoard(self.0 >> 8)
+        } else {
+            BitBoard(self.0 << 8)
+        }
     }
 }
 

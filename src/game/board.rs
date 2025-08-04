@@ -16,7 +16,7 @@ use super::moves::MoveList;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Board {
-    pieces: [BitBoard; 6],
+    pub pieces: [BitBoard; 6],
     pub sides: [BitBoard; 2],
 
     piece_map: [Piece; Square::COUNT],
@@ -128,8 +128,7 @@ impl Board {
                 self.set_piece(src_piece, dest);
 
                 if matches!(move_type, MoveKind::DoublePush) {
-                    let delta = src_piece.colour().forward();
-                    self.en_passant = Some(src.jump(delta));
+                    self.en_passant = Some(src.shift::<8>(src_piece.colour()));
                     self.hash.hash_enpassant(self.en_passant.unwrap());
                 }
             }
@@ -139,7 +138,7 @@ impl Board {
                 self.set_piece(src_piece, dest);
             }
             MoveKind::EnPassant => {
-                let captured_pawn_square = dest.jump(-src_piece.colour().forward());
+                let captured_pawn_square = dest.shift::<8>(!src_piece.colour());
                 self.remove_piece(captured_pawn_square);
                 self.remove_piece(src);
                 self.set_piece(src_piece, dest);
@@ -228,12 +227,7 @@ impl Board {
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
         // Pawn moves
-        let mut pawn_bb = self.pieces[Piece::WP.index()] & self.sides[side_idx];
-        while pawn_bb != BitBoard::EMPTY {
-            let src = pawn_bb.lsb();
-            self.all_pawn_moves::<QUIET>(src, side, occ, &mut moves);
-            pawn_bb = pawn_bb.pop_bit(src);
-        }
+        self.all_pawn_moves::<QUIET>(side, occ, &mut moves);
 
         // Knight moves
         let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side_idx];
@@ -519,7 +513,7 @@ impl Board {
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
         let mut occs = occ.pop_bit(src).set_bit(dest);
         if mt == MoveKind::EnPassant {
-            let ep_dest = self.en_passant.unwrap().jump((!self.side).forward());
+            let ep_dest = self.en_passant.unwrap().shift::<8>(!self.side);
             occs = occs.pop_bit(ep_dest);
         }
 
