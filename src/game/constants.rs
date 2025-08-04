@@ -1,5 +1,7 @@
 use crate::game::bitboard::BitBoard;
 
+use super::square::Square;
+
 pub const PIECE_VALUES: [i32; 6] = [
     100,  // Pawn
     420,  // Knight
@@ -7,6 +9,11 @@ pub const PIECE_VALUES: [i32; 6] = [
     600,  // Rook
     1000, // Queen
     2000, // King
+];
+
+pub const CASTLE: [[Square; 2]; 2] = [
+    [Square::new(2), Square::new(6)],   // c1 g1
+    [Square::new(58), Square::new(62)], // c8 f8
 ];
 
 pub const PAWN_ATTACKS: [[BitBoard; 64]; 2] = [
