@@ -3,7 +3,7 @@ use crate::game::square::Square;
 use super::{
     bitboard::BitBoard,
     board::Board,
-    constants::{KING_ATTACKS, KNIGHT_ATTACKS},
+    constants::{KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS},
     piece::{Colour, Piece},
 };
 
@@ -29,11 +29,11 @@ impl Move {
     }
 
     pub const fn get_source(self) -> Square {
-        Square::new((self.0 & SRC) as usize)
+        Square::new((self.0 & SRC) as u8)
     }
 
     pub const fn get_dest(self) -> Square {
-        Square::new(((self.0 & DST) >> 6) as usize)
+        Square::new(((self.0 & DST) >> 6) as u8)
     }
 
     pub fn get_type(self) -> MoveKind {
@@ -206,48 +206,84 @@ impl Board {
 
     pub fn all_pawn_moves<const QUIET: bool>(
         &self,
-        src: Square,
         colour: Colour,
         occ: BitBoard,
         moves: &mut MoveList,
     ) {
-        let forward = colour.forward();
         let start_rank = BitBoard::START_RANKS[colour as usize];
-        let promo_rank = BitBoard::PROMO_RANKS[colour as usize];
-        let opponent = self.sides[!colour as usize];
+        let promo_rank = BitBoard::START_RANKS[!colour as usize];
+        let pawns = self.pieces[Piece::WP as usize] & self.sides[colour as usize];
+        let opps = self.sides[!colour as usize];
+        let empty = !occ;
+        let first = empty.shift(colour);
+        let mut pushes = first & pawns;
+        let mut promo = pushes & promo_rank;
 
-        let dest = src.jump(forward);
-        if !occ.get_bit(dest) {
-            if promo_rank.get_bit(dest) {
-                moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
-                moves.push(Move::new(src, dest, MoveKind::RookPromotion));
-                moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
-                moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
-            } else if QUIET {
+        if QUIET {
+            let second = (first & empty).shift(colour);
+            let mut double_push = second & start_rank & pawns;
+            pushes &= !promo_rank;
+
+            // Double pushes
+            while double_push != BitBoard::EMPTY {
+                let src = double_push.lsb();
+                let dest = src.shift::<16>(colour);
+                moves.push(Move::new(src, dest, MoveKind::DoublePush));
+                double_push = double_push.pop_bit(src);
+            }
+
+            // Quiet pushes
+            while pushes != BitBoard::EMPTY {
+                let src = pushes.lsb();
+                let dest = src.shift::<8>(colour);
                 moves.push(Move::new(src, dest, MoveKind::Quiet));
-                if start_rank.get_bit(src) {
-                    let dbl = src.jump(2 * forward);
-                    if !occ.get_bit(dbl) {
-                        moves.push(Move::new(src, dbl, MoveKind::DoublePush));
-                    }
-                }
+                pushes = pushes.pop_bit(src);
             }
         }
 
-        for delta in [(-1, forward), (1, forward)] {
-            if let Some(dest) = src.jump_check(delta.0, delta.1) {
-                if opponent.get_bit(dest) {
-                    if promo_rank.get_bit(dest) {
-                        moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
-                        moves.push(Move::new(src, dest, MoveKind::RookCapPromo));
-                        moves.push(Move::new(src, dest, MoveKind::BishopCapPromo));
-                        moves.push(Move::new(src, dest, MoveKind::KnightCapPromo));
-                    } else {
-                        moves.push(Move::new(src, dest, MoveKind::Capture));
-                    }
-                } else if self.en_passant == Some(dest) {
-                    let ep_target = dest.jump(-forward);
-                    if opponent.get_bit(ep_target) {
+        while promo != BitBoard::EMPTY {
+            let src = promo.lsb();
+            let dest = src.shift::<8>(colour);
+            moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
+            moves.push(Move::new(src, dest, MoveKind::RookPromotion));
+            moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
+            moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
+            promo = promo.pop_bit(src);
+        }
+
+        let mut attackers = pawns & !promo_rank;
+        let mut promo = pawns & promo_rank;
+
+        while attackers != BitBoard::EMPTY {
+            let src = attackers.lsb();
+            let mut attacks = PAWN_ATTACKS[colour as usize][src.index()] & opps;
+            while attacks != BitBoard::EMPTY {
+                let dest = attacks.lsb();
+                moves.push(Move::new(src, dest, MoveKind::Capture));
+                attacks = attacks.pop_bit(dest);
+            }
+            attackers = attackers.pop_bit(src);
+        }
+
+        while promo != BitBoard::EMPTY {
+            let src = promo.lsb();
+            let mut attacks = PAWN_ATTACKS[colour as usize][src.index()] & opps;
+            while attacks != BitBoard::EMPTY {
+                let dest = attacks.lsb();
+                moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
+                moves.push(Move::new(src, dest, MoveKind::RookCapPromo));
+                moves.push(Move::new(src, dest, MoveKind::BishopCapPromo));
+                moves.push(Move::new(src, dest, MoveKind::KnightCapPromo));
+                attacks = attacks.pop_bit(dest);
+            }
+            promo = promo.pop_bit(src);
+        }
+
+        if let Some(dest) = self.en_passant {
+            let forward = colour.forward();
+            for delta in [(-1, -forward), (1, -forward)] {
+                if let Some(src) = dest.jump_check(delta.0, delta.1) {
+                    if pawns.get_bit(src) {
                         moves.push(Move::new(src, dest, MoveKind::EnPassant));
                     }
                 }

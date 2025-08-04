@@ -1,5 +1,7 @@
 use crate::game::bitboard::BitBoard;
 
+use super::piece::Colour;
+
 /// Represents a square on a chessboard using a 0-63 index (a1 = 0, h8 = 63).
 ///
 /// The square is stored as a `u8` where the least significant bit (LSB) corresponds to a1.
@@ -49,12 +51,12 @@ impl Square {
             }
         }
 
-        Self::new((row * 8 + col) as usize)
+        Self::new(row * 8 + col)
     }
 
     /// Creates a new square from a 0-63 index.
-    pub const fn new(index: usize) -> Self {
-        Self(index as u8)
+    pub const fn new(index: u8) -> Self {
+        Self(index)
     }
 
     /// Returns the index of the square (0-63).
@@ -71,6 +73,11 @@ impl Square {
     pub const fn row(&self) -> usize {
         self.0 as usize / 8
     }
+    pub fn jump(self, file_delta: i8) -> Self {
+        let file = (self.0 % 8) as i8;
+        let rank = (self.0 / 8) as i8 + file_delta;
+        Self((rank * 8 + file) as u8)
+    }
 
     /// Returns the column (file) of the square (0-7, where 0 is file a).
     pub const fn col(&self) -> usize {
@@ -82,10 +89,9 @@ impl Square {
         BitBoard(1 << self.0)
     }
 
-    pub fn jump(self, file_delta: i8) -> Self {
-        let file = (self.0 % 8) as i8;
-        let rank = (self.0 / 8) as i8 + file_delta;
-        Self((rank * 8 + file) as u8)
+    pub fn shift<const AMOUNT: u8>(self, side: Colour) -> Self {
+        let sign = 1u8 - (side as u8 * 2); // White = +1, Black = -1 (mod 256)
+        Square::new(self.0 + AMOUNT * sign)
     }
 
     /// Attempts to move the square by the given file and rank deltas.

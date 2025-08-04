@@ -33,7 +33,7 @@ impl Board {
         let start = Instant::now();
         let total_nodes = self.bulk_perft::<true>(depth);
         let duration = start.elapsed().as_millis() as usize;
-        let perft = total_nodes / duration / 1_000;
+        let perft = total_nodes / duration.max(1) / 1_000;
         println!("\n{total_nodes} nodes in {duration:?} - {perft} Mn/s");
 
         total_nodes
