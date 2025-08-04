@@ -3,7 +3,7 @@ use crate::game::square::Square;
 use super::{
     bitboard::BitBoard,
     board::Board,
-    constants::{KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS},
+    constants::{CASTLE, KING_ATTACKS, KNIGHT_ATTACKS, PAWN_ATTACKS},
     piece::{Colour, Piece},
 };
 
@@ -151,7 +151,9 @@ impl Board {
         }
     }
 
-    pub fn all_king_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut MoveList) {
+    pub fn all_king_moves<const QUIET: bool>(&self, side: Colour, occ: u64, moves: &mut MoveList) {
+        let king_bb = self.pieces[Piece::WK.index()] & self.sides[side as usize];
+        let src = king_bb.lsb();
         let attacks = KING_ATTACKS[src.index()];
 
         if QUIET {
@@ -162,16 +164,9 @@ impl Board {
                 quiets = quiets.pop_bit(dst);
             }
 
-            if src.to_board() & BitBoard::KING_START_POS != BitBoard::EMPTY {
-                for &dest in &[
-                    Square::from("g1"),
-                    Square::from("c1"),
-                    Square::from("g8"),
-                    Square::from("c8"),
-                ] {
-                    if self.is_castle_legal(dest) {
-                        moves.push(Move::new(src, dest, MoveKind::Castle));
-                    }
+            for &dest in &CASTLE[side as usize] {
+                if self.is_castle_legal(dest) {
+                    moves.push(Move::new(src, dest, MoveKind::Castle));
                 }
             }
         }
@@ -184,23 +179,33 @@ impl Board {
         }
     }
 
-    pub fn all_knight_moves<const QUIET: bool>(&self, src: Square, occ: u64, moves: &mut MoveList) {
-        let attacks = KNIGHT_ATTACKS[src.index()];
+    pub fn all_knight_moves<const QUIET: bool>(
+        &self,
+        side: Colour,
+        occ: BitBoard,
+        moves: &mut MoveList,
+    ) {
+        let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side as usize];
+        while knight_bb != BitBoard::EMPTY {
+            let src = knight_bb.lsb();
+            let attacks = KNIGHT_ATTACKS[src.index()];
 
-        if QUIET {
-            let mut quiets = attacks & !BitBoard(occ);
-            while quiets != BitBoard::EMPTY {
-                let dst = quiets.lsb();
-                moves.push(Move::new(src, dst, MoveKind::Quiet));
-                quiets = quiets.pop_bit(dst);
+            if QUIET {
+                let mut quiets = attacks & !occ;
+                while quiets != BitBoard::EMPTY {
+                    let dst = quiets.lsb();
+                    moves.push(Move::new(src, dst, MoveKind::Quiet));
+                    quiets = quiets.pop_bit(dst);
+                }
             }
-        }
 
-        let mut caps = attacks & self.sides[!self.side as usize];
-        while caps != BitBoard::EMPTY {
-            let dst = caps.lsb();
-            moves.push(Move::new(src, dst, MoveKind::Capture));
-            caps = caps.pop_bit(dst);
+            let mut caps = attacks & self.sides[!self.side as usize];
+            while caps != BitBoard::EMPTY {
+                let dst = caps.lsb();
+                moves.push(Move::new(src, dst, MoveKind::Capture));
+                caps = caps.pop_bit(dst);
+            }
+            knight_bb = knight_bb.pop_bit(src);
         }
     }
 

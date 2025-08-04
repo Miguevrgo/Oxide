@@ -208,9 +208,12 @@ impl Board {
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
         let rights_ok = self.castling_rights.0 & right_bit != 0;
         let path_clear = inter_squares & occ == BitBoard::EMPTY;
+        if !(path_clear && rights_ok) {
+            return false;
+        }
         let safe = !self.in_check()
-            && !self.is_attacked_by::<false>(king_pass, !self.side)
-            && !self.is_attacked_by::<false>(king_end, !self.side);
+            && !self.is_attacked_by(king_pass, !self.side)
+            && !self.is_attacked_by(king_end, !self.side);
         let rook_ok = self.piece_at(rook_sq)
             == if self.side == Colour::White {
                 Piece::WR
@@ -218,7 +221,7 @@ impl Board {
                 Piece::BR
             };
 
-        rights_ok && path_clear && safe && rook_ok
+        safe && rook_ok
     }
 
     fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
@@ -230,12 +233,7 @@ impl Board {
         self.all_pawn_moves::<QUIET>(side, occ, &mut moves);
 
         // Knight moves
-        let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side_idx];
-        while knight_bb != BitBoard::EMPTY {
-            let src = knight_bb.lsb();
-            self.all_knight_moves::<QUIET>(src, occ.0, &mut moves);
-            knight_bb = knight_bb.pop_bit(src);
-        }
+        self.all_knight_moves::<QUIET>(side, occ, &mut moves);
 
         // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
@@ -262,12 +260,7 @@ impl Board {
         }
 
         // King moves
-        let mut king_bb = self.pieces[Piece::WK.index()] & self.sides[side_idx];
-        while king_bb != BitBoard::EMPTY {
-            let src = king_bb.lsb();
-            self.all_king_moves::<QUIET>(src, occ.0, &mut moves);
-            king_bb = king_bb.pop_bit(src);
-        }
+        self.all_king_moves::<QUIET>(side, occ.0, &mut moves);
 
         moves
     }
@@ -280,7 +273,7 @@ impl Board {
             let mut new_board = *self;
             new_board.make_move(m);
 
-            if !new_board.is_attacked_by::<false>(new_board.king_square(self.side), !self.side) {
+            if !new_board.is_attacked_by(new_board.king_square(self.side), !self.side) {
                 legal.push(m);
             }
         }
@@ -289,7 +282,7 @@ impl Board {
     }
 
     pub fn in_check(&self) -> bool {
-        self.is_attacked_by::<true>(self.king_square(self.side), !self.side)
+        self.is_attacked_by(self.king_square(self.side), !self.side)
     }
 
     pub fn make_null_move(&mut self) {
@@ -305,7 +298,7 @@ impl Board {
     /// Returns whether the given square is attacked by the given side or not,
     /// it uses sliding for bishop-queen and pawn, Obstruction difference with Infuehr improvement
     /// and precalculated bitboards for Knights and Kings
-    pub fn is_attacked_by<const CHECK: bool>(&self, square: Square, attacker: Colour) -> bool {
+    pub fn is_attacked_by(&self, square: Square, attacker: Colour) -> bool {
         let idx = square.index();
         let enemy_side = self.sides[attacker as usize];
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
