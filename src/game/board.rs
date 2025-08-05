@@ -214,14 +214,12 @@ impl Board {
         let safe = !self.in_check()
             && !self.is_attacked_by(king_pass, !self.side)
             && !self.is_attacked_by(king_end, !self.side);
-        let rook_ok = self.piece_at(rook_sq)
+        safe && self.piece_at(rook_sq)
             == if self.side == Colour::White {
                 Piece::WR
             } else {
                 Piece::BR
-            };
-
-        safe && rook_ok
+            }
     }
 
     fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
