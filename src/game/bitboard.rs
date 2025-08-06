@@ -157,6 +157,8 @@ impl BitBoard {
         Square::new(self.0.trailing_zeros() as u8)
     }
 
+    /// Returns a bitboard shifted one file to the opposite direction for
+    /// a pawn of the given colour
     pub fn shift(self, colour: Colour) -> Self {
         if colour == Colour::White {
             BitBoard(self.0 >> 8)

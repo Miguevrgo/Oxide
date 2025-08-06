@@ -624,45 +624,13 @@ impl Board {
 
         board
     }
-
-    #[allow(dead_code)]
-    pub fn draw_board(&self) {
-        print!("\x1B[2J\x1B[1;1H");
-        println!("\r  a b c d e f g h\r");
-        println!(" ┌────────────────┐\r");
-
-        for row in (0..8).rev() {
-            print!("{}│", row + 1);
-            for col in 0..8 {
-                let square = Square::from_row_col(row, col);
-                let piece = self.piece_map[square.index()];
-                let bg_colour = if (row + col) % 2 == 0 {
-                    "\x1b[48;2;240;217;181m" // Light square
-                } else {
-                    "\x1b[48;2;181;136;99m" // Dark square
-                };
-
-                if piece == Piece::Empty {
-                    print!("{bg_colour}  \x1b[0m");
-                } else {
-                    let fg_colour = match piece.colour() {
-                        Colour::White => "\x1b[38;2;255;255;255m",
-                        Colour::Black => "\x1b[38;2;0;0;0m",
-                    };
-                    print!("{bg_colour}{fg_colour}{piece} \x1b[0m");
-                }
-            }
-            println!("│\r");
-        }
-
-        println!(" └────────────────┘\r");
-    }
 }
 
 // For debugging
 
 impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "\x1B[2J\x1B[1;1H")?;
         writeln!(f, "  a b c d e f g h")?;
         writeln!(f, " ┌────────────────┐")?;
 
@@ -671,16 +639,25 @@ impl std::fmt::Display for Board {
             for col in 0..8 {
                 let square = Square::from_row_col(row, col);
                 let piece = self.piece_map[square.index()];
-                if piece == Piece::Empty {
-                    write!(f, "  ")?;
+                let bg = if (row + col) % 2 == 0 {
+                    "\x1b[48;2;240;217;181m"
                 } else {
-                    write!(f, "{piece} ",)?;
+                    "\x1b[48;2;181;136;99m"
+                };
+
+                if piece == Piece::Empty {
+                    write!(f, "{bg}  \x1b[0m")?;
+                } else {
+                    let fg = match piece.colour() {
+                        Colour::White => "\x1b[38;2;255;255;255m",
+                        Colour::Black => "\x1b[38;2;0;0;0m",
+                    };
+                    write!(f, "{bg}{fg}{piece} \x1b[0m")?;
                 }
             }
             writeln!(f, "│")?;
         }
 
-        writeln!(f, " └────────────────┘")?;
-        Ok(())
+        writeln!(f, " └────────────────┘")
     }
 }

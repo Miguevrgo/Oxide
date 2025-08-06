@@ -106,11 +106,7 @@ impl Piece {
     }
 
     pub const fn colour(self) -> Colour {
-        if self as u8 & 1 == 0 {
-            Colour::White
-        } else {
-            Colour::Black
-        }
+        Colour::from_u8(self as u8 & 1)
     }
 
     pub const fn is_pawn(self) -> bool {
@@ -159,9 +155,16 @@ pub enum Colour {
 
 impl Colour {
     const FORWARD: [i8; 2] = [1, -1];
+
     #[inline]
     pub const fn forward(self) -> i8 {
         Self::FORWARD[self as usize]
+    }
+
+    #[inline]
+    pub const fn from_u8(value: u8) -> Self {
+        // Safety: Value in [0,1]
+        unsafe { std::mem::transmute(value & 1) }
     }
 }
 
@@ -169,9 +172,7 @@ impl std::ops::Not for Colour {
     type Output = Colour;
 
     fn not(self) -> Self {
-        match self {
-            Colour::White => Colour::Black,
-            Colour::Black => Colour::White,
-        }
+        // Colour is either 0 or 1
+        unsafe { std::mem::transmute(self as u8 ^ 1) }
     }
 }
