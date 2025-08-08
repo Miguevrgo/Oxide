@@ -1,6 +1,6 @@
 use crate::game::bitboard::BitBoard;
 
-use super::square::Square;
+use super::{piece::Colour, square::Square};
 
 pub const PIECE_VALUES: [i32; 6] = [
     100,  // Pawn
@@ -10,6 +10,105 @@ pub const PIECE_VALUES: [i32; 6] = [
     1000, // Queen
     2000, // King
 ];
+
+#[macro_export]
+/// Credit for this macro goes to akimbo
+macro_rules! const_array {
+    (| $i:ident, $size:literal | $($r:tt)+) => {{
+        let mut $i = 0;
+        let mut res = [{$($r)+}; $size];
+        while $i < $size - 1 {
+            $i += 1;
+            res[$i] = {$($r)+};
+        }
+        res
+    }}
+}
+
+const FILE_A_U64: u64 = 0x0101_0101_0101_0101;
+const FILE_H_U64: u64 = 0x0101_0101_0101_0101 << 7;
+
+pub const fn pawn_set_attacks(pawns: BitBoard, side: Colour) -> BitBoard {
+    let pawns = pawns.0;
+    if matches!(side, Colour::White) {
+        BitBoard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
+    } else {
+        BitBoard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)
+    }
+}
+
+static PINNED_MOVES: [[BitBoard; 64]; 64] = const_array!(|king, 64| const_array!(|pinned, 64| {
+    let king = Square::new(king as u8);
+    let pinned = Square::new(pinned as u8);
+
+    if bishop_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
+        bishop_attacks(BitBoard::EMPTY.0, king.index())
+            .and(bishop_attacks(king.to_board().0, pinned.index()))
+    } else if rook_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
+        rook_attacks(BitBoard::EMPTY.0, king.index())
+            .and(rook_attacks(king.to_board().0, pinned.index()))
+    } else {
+        BitBoard::EMPTY
+    }
+}));
+
+pub fn pinned_moves(king_sq: Square, pinned: Square) -> BitBoard {
+    PINNED_MOVES[king_sq.index()][pinned.index()]
+}
+
+static BETWEEN: [[BitBoard; 64]; 64] = const_array!(|i, 64| const_array!(|j, 64| {
+    let i = Square::new(i as u8);
+    let j = Square::new(j as u8);
+
+    if rook_attacks(BitBoard::EMPTY.0, i.index()).contains(j) {
+        rook_attacks(j.to_board().0, i.index()).and(rook_attacks(i.to_board().0, j.index()))
+    } else if bishop_attacks(BitBoard::EMPTY.0, i.index()).contains(j) {
+        bishop_attacks(j.to_board().0, i.index()).and(bishop_attacks(i.to_board().0, j.index()))
+    } else {
+        BitBoard::EMPTY
+    }
+}));
+
+pub fn between(sq1: Square, sq2: Square) -> BitBoard {
+    BETWEEN[sq1.index()][sq2.index()]
+}
+
+struct SMasks {
+    pub lower: u64,
+    pub upper: u64,
+    pub line_ex: u64,
+}
+
+impl SMasks {
+    pub const fn new(lower: u64, upper: u64) -> Self {
+        let line_ex = lower | upper;
+        SMasks {
+            lower,
+            upper,
+            line_ex,
+        }
+    }
+}
+
+const fn line_attacks(occ: u64, mask: &SMasks) -> u64 {
+    let lower: u64 = mask.lower & occ;
+    let upper: u64 = mask.upper & occ;
+    let ms1_b = 0x8000000000000000 >> (lower | 1).leading_zeros();
+    let odiff = upper ^ upper.wrapping_sub(ms1_b);
+    mask.line_ex & odiff
+}
+
+pub const fn rook_attacks(occ: u64, sq: usize) -> BitBoard {
+    BitBoard(line_attacks(occ, &MASKS[sq][0]) | line_attacks(occ, &MASKS[sq][1]))
+}
+
+pub const fn bishop_attacks(occ: u64, sq: usize) -> BitBoard {
+    BitBoard(line_attacks(occ, &MASKS[sq][2]) | line_attacks(occ, &MASKS[sq][3]))
+}
+
+pub fn queen_attacks(occ: u64, sq: usize) -> BitBoard {
+    rook_attacks(occ, sq) | bishop_attacks(occ, sq)
+}
 
 pub const CASTLE: [[Square; 2]; 2] = [
     [Square::new(2), Square::new(6)],   // c1 g1
@@ -284,42 +383,6 @@ pub const KING_ATTACKS: [BitBoard; 64] = [
     BitBoard(0xa0e0000000000000), // g8
     BitBoard(0x40c0000000000000), // h8
 ];
-
-struct SMasks {
-    pub lower: u64,
-    pub upper: u64,
-    pub line_ex: u64,
-}
-impl SMasks {
-    pub const fn new(lower: u64, upper: u64) -> Self {
-        let line_ex = lower | upper;
-        SMasks {
-            lower,
-            upper,
-            line_ex,
-        }
-    }
-}
-
-fn line_attacks(occ: u64, mask: &SMasks) -> u64 {
-    let lower: u64 = mask.lower & occ;
-    let upper: u64 = mask.upper & occ;
-    let ms1_b = 0x8000000000000000 >> (lower | 1).leading_zeros();
-    let odiff = upper ^ upper.wrapping_sub(ms1_b);
-    mask.line_ex & odiff
-}
-
-pub fn rook_attacks(occ: u64, sq: usize) -> BitBoard {
-    BitBoard(line_attacks(occ, &MASKS[sq][0]) | line_attacks(occ, &MASKS[sq][1]))
-}
-
-pub fn bishop_attacks(occ: u64, sq: usize) -> BitBoard {
-    BitBoard(line_attacks(occ, &MASKS[sq][2]) | line_attacks(occ, &MASKS[sq][3]))
-}
-
-pub fn queen_attacks(occ: u64, sq: usize) -> BitBoard {
-    rook_attacks(occ, sq) | bishop_attacks(occ, sq)
-}
 
 const MASKS: [[SMasks; 4]; 64] = [
     [

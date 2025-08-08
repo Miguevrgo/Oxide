@@ -112,7 +112,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
 
     alpha = alpha.max(best_eval);
 
-    let mut moves = board.generate_legal_moves::<false>();
+    let mut moves = board.generate_pseudo_moves::<false>(board.side);
     let mut scores = [0; 252];
     moves.as_slice().iter().enumerate().for_each(|(i, m)| {
         scores[i] = mvv_lva(*m, board);
@@ -124,8 +124,12 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
     data.ply += 1;
 
     while let Some((m, _)) = moves.pick(&mut scores) {
+        if !board.is_legal(m) {
+            continue;
+        }
         let mut new_board = *board;
         new_board.make_move(m);
+
         data.nodes += 1;
 
         let score = -quiescence(&new_board, -beta, -alpha, data);
@@ -225,10 +229,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         depth -= 1;
     }
 
-    let mut moves = board.generate_legal_moves::<true>();
-    if moves.is_empty() {
-        return i32::from(in_check) * (data.ply as i32 - MATE);
-    }
+    let mut moves = board.generate_pseudo_moves::<true>(board.side);
     let mut scores = [0; 252];
 
     moves.as_slice().iter().enumerate().for_each(|(i, m)| {
@@ -254,8 +255,13 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             }
         }
 
+        if !board.is_legal(m) {
+            continue;
+        }
+
         let mut new_board = *board;
         new_board.make_move(m);
+
         move_idx += 1;
         data.nodes += 1;
 
@@ -333,6 +339,10 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     if data.stop {
         return 0;
+    }
+
+    if move_idx == 0 {
+        return i32::from(in_check) * (data.ply as i32 - MATE);
     }
 
     let bound = if best_score <= old_alpha {

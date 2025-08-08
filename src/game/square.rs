@@ -71,7 +71,7 @@ impl Square {
     }
 
     /// Converts the square to a `BitBoard` with only this square set.
-    pub fn to_board(self) -> BitBoard {
+    pub const fn to_board(self) -> BitBoard {
         BitBoard(1 << self.0)
     }
 
