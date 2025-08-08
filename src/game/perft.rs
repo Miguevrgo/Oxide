@@ -1,6 +1,5 @@
-use std::time::Instant;
-
 use crate::game::board::Board;
+use std::time::Instant;
 
 impl Board {
     fn bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
@@ -9,10 +8,14 @@ impl Board {
         }
 
         let mut total = 0;
-        let moves = self.generate_legal_moves::<true>();
+        let moves = self.generate_pseudo_moves::<true>(self.side);
         for m in &moves {
+            if !self.is_legal(m) {
+                continue;
+            }
+
             if depth == 1 {
-                return moves.len();
+                total += 1;
             } else {
                 let mut new = *self;
                 new.make_move(m);

@@ -1,17 +1,16 @@
 use crate::engine::network::{EvalTable, Network};
+use crate::game::constants::queen_attacks;
 use crate::game::{
     bitboard::BitBoard,
     castle::CastlingRights,
-    constants::{
-        bishop_attacks, queen_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES,
-    },
+    constants::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES},
     moves::{Move, MoveKind},
     piece::{Colour, Piece},
     square::Square,
     zobrist::ZHash,
 };
 
-use super::constants::PAWN_ATTACKS;
+use super::constants::{between, pawn_set_attacks, pinned_moves, PAWN_ATTACKS};
 use super::moves::MoveList;
 
 #[derive(Copy, Clone, Debug)]
@@ -26,6 +25,9 @@ pub struct Board {
     pub en_passant: Option<Square>,
     pub halfmoves: u8,
     pub hash: ZHash,
+    pub checkers: BitBoard,
+    pub threats: BitBoard,
+    pub pinned: BitBoard,
 }
 
 impl Board {
@@ -39,6 +41,9 @@ impl Board {
             halfmoves: 0,
             side: Colour::White,
             hash: ZHash::NULL,
+            checkers: BitBoard::EMPTY,
+            threats: BitBoard::EMPTY,
+            pinned: BitBoard::EMPTY,
         }
     }
 
@@ -63,8 +68,9 @@ impl Board {
 
     fn set_piece(&mut self, piece: Piece, square: Square) {
         let colour = piece.colour() as usize;
-        self.sides[colour] = self.sides[colour].set_bit(square);
-        self.pieces[piece.index()] = self.pieces[piece.index()].set_bit(square);
+        let bit = 1u64 << square.index();
+        self.sides[colour] ^= bit;
+        self.pieces[piece.index()] ^= bit;
         self.piece_map[square.index()] = piece;
         self.hash.hash_piece(piece, square);
     }
@@ -72,9 +78,10 @@ impl Board {
     fn remove_piece(&mut self, square: Square) {
         let piece = self.piece_at(square);
         let colour = piece.colour() as usize;
+        let bit = 1u64 << square.index();
 
-        self.sides[colour] = self.sides[colour].pop_bit(square);
-        self.pieces[piece.index()] = self.pieces[piece.index()].pop_bit(square);
+        self.sides[colour] ^= bit;
+        self.pieces[piece.index()] ^= bit;
         self.piece_map[square.index()] = Piece::Empty;
         self.hash.hash_piece(piece, square);
     }
@@ -170,6 +177,81 @@ impl Board {
 
         self.side = !self.side;
         self.hash.hash_side();
+        self.calculate_threats();
+        self.pinned_and_checkers();
+    }
+
+    pub fn calculate_threats(&mut self) {
+        let attacker = !self.side;
+        let mut threats = BitBoard::EMPTY;
+        let occ = (self.sides[0] | self.sides[1]) ^ self.king_square(self.side).to_board();
+
+        threats |= pawn_set_attacks(
+            self.pieces[Piece::WP.index()] & self.sides[attacker as usize],
+            attacker,
+        );
+
+        let mut rooks = (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()])
+            & self.sides[attacker as usize];
+        while rooks != BitBoard::EMPTY {
+            let sq = rooks.lsb();
+            threats |= rook_attacks(occ.0, sq.index());
+            rooks = rooks.pop_bit(sq);
+        }
+
+        // Bishops and queens (diagonals)
+        let mut bishops = (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])
+            & self.sides[attacker as usize];
+        while bishops != BitBoard::EMPTY {
+            let sq = bishops.lsb();
+            threats |= bishop_attacks(occ.0, sq.index());
+            bishops = bishops.pop_bit(sq);
+        }
+
+        let mut knights = self.pieces[Piece::WN.index()] & self.sides[attacker as usize];
+        while knights != BitBoard::EMPTY {
+            let sq = knights.lsb();
+            threats |= KNIGHT_ATTACKS[sq.index()];
+            knights = knights.pop_bit(sq);
+        }
+
+        let king_sq = self.king_square(attacker).index();
+        threats |= KING_ATTACKS[king_sq];
+
+        self.threats = threats;
+    }
+
+    pub fn pinned_and_checkers(&mut self) {
+        self.pinned = BitBoard::EMPTY;
+        let attacker = !self.side;
+        let king_sq = self.king_square(self.side);
+        let occupancies = self.sides[0] | self.sides[1];
+
+        self.checkers = (KNIGHT_ATTACKS[king_sq.index()]
+            & self.pieces[Piece::WN.index()]
+            & self.sides[attacker as usize])
+            | (PAWN_ATTACKS[self.side as usize][king_sq.index()]
+                & self.pieces[Piece::WP.index()]
+                & self.sides[attacker as usize]);
+
+        let mut sliders_attacks = ((self.pieces[Piece::WB.index()]
+            | self.pieces[Piece::WQ.index()])
+            & self.sides[attacker as usize]
+            & bishop_attacks(BitBoard::EMPTY.0, king_sq.index()))
+            | ((self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()])
+                & self.sides[attacker as usize]
+                & rook_attacks(BitBoard::EMPTY.0, king_sq.index()));
+
+        while sliders_attacks != BitBoard::EMPTY {
+            let sq = sliders_attacks.lsb();
+            let bloquers = between(sq, king_sq) & occupancies;
+            if bloquers == BitBoard::EMPTY {
+                self.checkers |= sq.to_board();
+            } else if bloquers.count_bits() == 1 {
+                self.pinned |= bloquers & self.sides[self.side as usize];
+            }
+            sliders_attacks = sliders_attacks.pop_bit(sq);
+        }
     }
 
     pub fn is_castle_legal(&self, dest: Square) -> bool {
@@ -222,18 +304,24 @@ impl Board {
             }
     }
 
-    fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
+    pub fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
         let mut moves = MoveList::new();
         let side_idx = side as usize;
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
+        // King moves
+        self.all_king_moves::<QUIET>(side, occ.0, &mut moves);
+
+        if self.checkers.count_bits() > 1 {
+            return moves;
+        }
+
         // Pawn moves
         self.all_pawn_moves::<QUIET>(side, occ, &mut moves);
 
-        // Knight moves
+        // Knights
         self.all_knight_moves::<QUIET>(side, occ, &mut moves);
 
-        // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
             let src = bishop_bb.lsb();
@@ -257,26 +345,46 @@ impl Board {
             queen_bb = queen_bb.pop_bit(src);
         }
 
-        // King moves
-        self.all_king_moves::<QUIET>(side, occ.0, &mut moves);
-
         moves
     }
 
-    pub fn generate_legal_moves<const QUIET: bool>(&self) -> MoveList {
-        let mut legal = MoveList::new();
-        let pseudo = self.generate_pseudo_moves::<QUIET>(self.side);
+    pub fn is_legal(&self, m: Move) -> bool {
+        let src = m.get_source();
+        let dest = m.get_dest();
+        let mov_piece = self.piece_at(src);
+        let king_pos = self.king_square(self.side);
 
-        for m in pseudo {
-            let mut new_board = *self;
-            new_board.make_move(m);
-
-            if !new_board.is_attacked_by(new_board.king_square(self.side), !self.side) {
-                legal.push(m);
-            }
+        if m.get_type() == MoveKind::EnPassant {
+            let captured_pawn_sq = dest.shift::<8>(!self.side); // !self.side
+            let occ = (self.sides[0] | self.sides[1])
+                ^ src.to_board()
+                ^ dest.to_board()
+                ^ captured_pawn_sq.to_board();
+            let diagonal_pieces = (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])
+                & self.sides[!self.side as usize];
+            let orthogonal_pieces = (self.pieces[Piece::WR.index()]
+                | self.pieces[Piece::WQ.index()])
+                & self.sides[!self.side as usize];
+            return (bishop_attacks(occ.0, king_pos.index()) & diagonal_pieces == BitBoard::EMPTY)
+                && (rook_attacks(occ.0, king_pos.index()) & orthogonal_pieces == BitBoard::EMPTY);
         }
 
-        legal
+        if mov_piece.is_king() {
+            return !self.threats.contains(dest);
+        }
+
+        if self.pinned.contains(src) && !pinned_moves(king_pos, src).contains(dest) {
+            return false;
+        }
+
+        match self.checkers.count_bits() {
+            0 => true,
+            1 => {
+                let checker = self.checkers.lsb();
+                dest == checker || between(king_pos, checker).contains(dest)
+            }
+            _ => false,
+        }
     }
 
     pub fn in_check(&self) -> bool {
@@ -291,6 +399,9 @@ impl Board {
             self.hash.hash_enpassant(sq);
             self.en_passant = None;
         }
+
+        self.calculate_threats();
+        self.pinned_and_checkers();
     }
 
     /// Returns whether the given square is attacked by the given side or not,
@@ -621,6 +732,8 @@ impl Board {
 
         board.halfmoves = fen[4].parse::<u8>().unwrap();
         board.hash = ZHash::new(&board);
+        board.calculate_threats();
+        board.pinned_and_checkers();
 
         board
     }

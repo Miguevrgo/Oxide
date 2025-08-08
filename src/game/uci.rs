@@ -194,7 +194,7 @@ impl UCIEngine {
         let dest = Square::from(&move_str[2..4]);
         let promotion = move_str.get(4..5);
 
-        let moves = board.generate_legal_moves::<true>();
+        let moves = board.generate_pseudo_moves::<true>(board.side);
         for m in moves {
             if m.get_source() == src && m.get_dest() == dest {
                 if let Some(promo_char) = promotion {
