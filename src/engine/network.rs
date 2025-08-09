@@ -3,9 +3,9 @@ use std::arch::x86_64::*;
 // Square: 0-63
 // Piece: Pawn = 0, Knight = 1, Bishop = 2, Rook = 3, Queen = 4, King = 5
 // Side: White = 0, Black = 1
-// Network (768x4 -> 1024)x2 -> 1
+// Network (768x8 -> 1536)x2 -> 1
 const INPUT_SIZE: usize = 768;
-pub const HL_SIZE: usize = 1024;
+pub const HL_SIZE: usize = 1536;
 
 // Quantization factors
 const QA: i32 = 255;
@@ -14,22 +14,22 @@ const QAB: i32 = QA * QB;
 
 // Scaling factor
 const SCALE: i32 = 400;
-const NUM_BUCKETS: usize = 4;
+pub const NUM_BUCKETS: usize = 8;
 
 #[rustfmt::skip]
-static BUCKETS: [usize; 64] = [
-    0, 0, 1, 1, 5, 5, 4, 4,
-    2, 2, 2, 2, 6, 6, 6, 6,
-    3, 3, 3, 3, 7, 7, 7, 7,
-    3, 3, 3, 3, 7, 7, 7, 7,
-    3, 3, 3, 3, 7, 7, 7, 7,
-    3, 3, 3, 3, 7, 7, 7, 7,
-    3, 3, 3, 3, 7, 7, 7, 7,
-    3, 3, 3, 3, 7, 7, 7, 7,
+pub static BUCKETS: [usize; 64] = [
+    0, 1, 2, 3, 11, 10, 9, 8,
+    4, 4, 5, 5, 13, 13, 12, 12,
+    6, 6, 6, 6, 14, 14, 14, 14,
+    6, 6, 6, 6, 14, 14, 14, 14,
+    7, 7, 7, 7, 15, 15, 15, 15,
+    7, 7, 7, 7, 15, 15, 15, 15,
+    7, 7, 7, 7, 15, 15, 15, 15,
+    7, 7, 7, 7, 15, 15, 15, 15,
 ];
 
 pub static NNUE: Network =
-    unsafe { std::mem::transmute(*include_bytes!("../../resources/oxide-v3.bin")) };
+    unsafe { std::mem::transmute(*include_bytes!("../../resources/oxide-v4.bin")) };
 
 #[repr(C)]
 pub struct Network {
@@ -82,7 +82,7 @@ impl Accumulator {
     pub fn update_multi(&mut self, adds: &[u16], subs: &[u16]) {
         const REGS: usize = 8;
         const PER: usize = 128;
-        const ITERATIONS: usize = 8;
+        const ITERATIONS: usize = HL_SIZE / PER;
 
         unsafe {
             for i in 0..ITERATIONS {
