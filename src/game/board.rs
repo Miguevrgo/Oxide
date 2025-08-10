@@ -10,7 +10,7 @@ use crate::game::{
     zobrist::ZHash,
 };
 
-use super::constants::{between, pawn_set_attacks, pinned_moves, PAWN_ATTACKS};
+use super::constants::{between, pinned_moves, PAWN_ATTACKS};
 use super::moves::MoveList;
 
 #[derive(Copy, Clone, Debug)]
@@ -181,79 +181,90 @@ impl Board {
         self.pinned_and_checkers();
     }
 
+    /// Updates the threats bitboard with the current squares under attack by any piece of the
+    /// opposite board colour
     pub fn calculate_threats(&mut self) {
-        let attacker = !self.side;
-        let mut threats = BitBoard::EMPTY;
-        let occ = (self.sides[0] | self.sides[1]) ^ self.king_square(self.side).to_board();
+        let attacker = !self.side as usize;
+        self.threats = BitBoard::EMPTY;
+        let occ = (self.sides[0] | self.sides[1]) ^ self.king_square(self.side as usize).to_board();
 
-        threats |= pawn_set_attacks(
-            self.pieces[Piece::WP.index()] & self.sides[attacker as usize],
-            attacker,
-        );
+        // Pawn attacks
+        let mut pawns = self.pieces[Piece::WP.index()] & self.sides[attacker];
+        while pawns != BitBoard::EMPTY {
+            let sq = pawns.lsb();
+            self.threats |= PAWN_ATTACKS[attacker][sq.index()];
+            pawns = pawns.pop_bit(sq);
+        }
 
+        // Rooks and queens (Orthogonal)
         let mut rooks = (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()])
-            & self.sides[attacker as usize];
+            & self.sides[attacker];
         while rooks != BitBoard::EMPTY {
             let sq = rooks.lsb();
-            threats |= rook_attacks(occ.0, sq.index());
+            self.threats |= rook_attacks(occ.0, sq.index());
             rooks = rooks.pop_bit(sq);
         }
 
         // Bishops and queens (diagonals)
         let mut bishops = (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])
-            & self.sides[attacker as usize];
+            & self.sides[attacker];
         while bishops != BitBoard::EMPTY {
             let sq = bishops.lsb();
-            threats |= bishop_attacks(occ.0, sq.index());
+            self.threats |= bishop_attacks(occ.0, sq.index());
             bishops = bishops.pop_bit(sq);
         }
 
-        let mut knights = self.pieces[Piece::WN.index()] & self.sides[attacker as usize];
+        // Knight attacks (jumpers)
+        let mut knights = self.pieces[Piece::WN.index()] & self.sides[attacker];
         while knights != BitBoard::EMPTY {
             let sq = knights.lsb();
-            threats |= KNIGHT_ATTACKS[sq.index()];
+            self.threats |= KNIGHT_ATTACKS[sq.index()];
             knights = knights.pop_bit(sq);
         }
 
+        // King attacks
         let king_sq = self.king_square(attacker).index();
-        threats |= KING_ATTACKS[king_sq];
-
-        self.threats = threats;
+        self.threats |= KING_ATTACKS[king_sq];
     }
 
+    /// Updates the pinned and checkers bitboards to include all of current board
+    /// side pieces which are pinned and all enemy pieces which are currently providing
+    /// a check
     pub fn pinned_and_checkers(&mut self) {
         self.pinned = BitBoard::EMPTY;
-        let attacker = !self.side;
-        let king_sq = self.king_square(self.side);
-        let occupancies = self.sides[0] | self.sides[1];
+        let attacker = !self.side as usize;
+        let king_sq = self.king_square(self.side as usize);
+        let occ = self.sides[0] | self.sides[1];
 
         self.checkers = (KNIGHT_ATTACKS[king_sq.index()]
             & self.pieces[Piece::WN.index()]
-            & self.sides[attacker as usize])
+            & self.sides[attacker])
             | (PAWN_ATTACKS[self.side as usize][king_sq.index()]
                 & self.pieces[Piece::WP.index()]
-                & self.sides[attacker as usize]);
+                & self.sides[attacker]);
 
         let mut sliders_attacks = ((self.pieces[Piece::WB.index()]
             | self.pieces[Piece::WQ.index()])
-            & self.sides[attacker as usize]
+            & self.sides[attacker]
             & bishop_attacks(BitBoard::EMPTY.0, king_sq.index()))
             | ((self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()])
-                & self.sides[attacker as usize]
+                & self.sides[attacker]
                 & rook_attacks(BitBoard::EMPTY.0, king_sq.index()));
 
         while sliders_attacks != BitBoard::EMPTY {
             let sq = sliders_attacks.lsb();
-            let bloquers = between(sq, king_sq) & occupancies;
-            if bloquers == BitBoard::EMPTY {
+            let blockers = between(sq, king_sq) & occ;
+            if blockers == BitBoard::EMPTY {
                 self.checkers |= sq.to_board();
-            } else if bloquers.count_bits() == 1 {
-                self.pinned |= bloquers & self.sides[self.side as usize];
+            } else if blockers.count_bits() == 1 {
+                self.pinned |= blockers & self.sides[self.side as usize];
             }
             sliders_attacks = sliders_attacks.pop_bit(sq);
         }
     }
 
+    /// Checks if the given castle is legal by checking castling_rights, checks, that there
+    /// are no pieces in between and passing squares are not threatened.
     pub fn is_castle_legal(&self, dest: Square) -> bool {
         let (rook_sq, king_pass, king_end, inter_squares, right_bit) = match (self.side, dest) {
             (Colour::White, d) if d == Square::from("g1") => (
@@ -293,9 +304,8 @@ impl Board {
         if !(path_clear && rights_ok) {
             return false;
         }
-        let safe = !self.in_check()
-            && !self.is_attacked_by(king_pass, !self.side)
-            && !self.is_attacked_by(king_end, !self.side);
+        let safe = self.checkers == BitBoard::EMPTY
+            && (king_pass.to_board() | king_end.to_board()) & self.threats == BitBoard::EMPTY;
         safe && self.piece_at(rook_sq)
             == if self.side == Colour::White {
                 Piece::WR
@@ -312,6 +322,7 @@ impl Board {
         // King moves
         self.all_king_moves::<QUIET>(side, occ.0, &mut moves);
 
+        // If there is more than 1 checker, the only possible move comes from the king
         if self.checkers.count_bits() > 1 {
             return moves;
         }
@@ -322,6 +333,7 @@ impl Board {
         // Knights
         self.all_knight_moves::<QUIET>(side, occ, &mut moves);
 
+        // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
             let src = bishop_bb.lsb();
@@ -348,11 +360,13 @@ impl Board {
         moves
     }
 
+    /// Returns wether the given move is legal or not by checking if the king would end in check after
+    /// the move
     pub fn is_legal(&self, m: Move) -> bool {
         let src = m.get_source();
         let dest = m.get_dest();
         let mov_piece = self.piece_at(src);
-        let king_pos = self.king_square(self.side);
+        let king_pos = self.king_square(self.side as usize);
 
         if m.get_type() == MoveKind::EnPassant {
             let captured_pawn_sq = dest.shift::<8>(!self.side); // !self.side
@@ -378,17 +392,20 @@ impl Board {
         }
 
         match self.checkers.count_bits() {
-            0 => true,
+            0 => true, // No checks
             1 => {
+                // If the move is going to solve the only check
                 let checker = self.checkers.lsb();
                 dest == checker || between(king_pos, checker).contains(dest)
             }
+            // As the move does not come from the king and there is more than one check, it cannot
+            // be stopped
             _ => false,
         }
     }
 
     pub fn in_check(&self) -> bool {
-        self.is_attacked_by(self.king_square(self.side), !self.side)
+        self.is_attacked_by(self.king_square(self.side as usize), !self.side)
     }
 
     pub fn make_null_move(&mut self) {
@@ -458,14 +475,14 @@ impl Board {
         false
     }
 
-    pub fn king_square(&self, colour: Colour) -> Square {
-        let king_bb = self.pieces[Piece::WK.index()] & self.sides[colour as usize];
+    pub fn king_square(&self, colour: usize) -> Square {
+        let king_bb = self.pieces[Piece::WK.index()] & self.sides[colour];
         king_bb.lsb()
     }
 
     pub fn evaluate(&self, cache: &mut EvalTable) -> i32 {
-        let white_king_sq = self.king_square(Colour::White).index();
-        let black_king_sq = self.king_square(Colour::Black).index();
+        let white_king_sq = self.king_square(Colour::White as usize).index();
+        let black_king_sq = self.king_square(Colour::Black as usize).index();
 
         let wbucket = Network::get_bucket::<0>(white_king_sq);
         let bbucket = Network::get_bucket::<1>(black_king_sq);

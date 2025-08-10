@@ -1,6 +1,6 @@
 use crate::game::bitboard::BitBoard;
 
-use super::{piece::Colour, square::Square};
+use super::square::Square;
 
 pub const PIECE_VALUES: [i32; 6] = [
     100,  // Pawn
@@ -11,66 +11,69 @@ pub const PIECE_VALUES: [i32; 6] = [
     2000, // King
 ];
 
-#[macro_export]
-/// Credit for this macro goes to akimbo
-macro_rules! const_array {
-    (| $i:ident, $size:literal | $($r:tt)+) => {{
-        let mut $i = 0;
-        let mut res = [{$($r)+}; $size];
-        while $i < $size - 1 {
-            $i += 1;
-            res[$i] = {$($r)+};
+const fn make_between_table() -> [[BitBoard; 64]; 64] {
+    let mut table = [[BitBoard::EMPTY; 64]; 64];
+    let mut i = 0;
+    while i < 64 {
+        let mut j = 0;
+        while j < 64 {
+            let sq1 = Square::new(i as u8);
+            let sq2 = Square::new(j as u8);
+
+            table[i][j] = if rook_attacks(BitBoard::EMPTY.0, sq1.index()).contains(sq2) {
+                rook_attacks(sq2.to_board().0, sq1.index())
+                    .and(rook_attacks(sq1.to_board().0, sq2.index()))
+            } else if bishop_attacks(BitBoard::EMPTY.0, sq1.index()).contains(sq2) {
+                bishop_attacks(sq2.to_board().0, sq1.index())
+                    .and(bishop_attacks(sq1.to_board().0, sq2.index()))
+            } else {
+                BitBoard::EMPTY
+            };
+
+            j += 1;
         }
-        res
-    }}
+        i += 1;
+    }
+    table
 }
 
-const FILE_A_U64: u64 = 0x0101_0101_0101_0101;
-const FILE_H_U64: u64 = 0x0101_0101_0101_0101 << 7;
+pub static BETWEEN: [[BitBoard; 64]; 64] = make_between_table();
 
-pub const fn pawn_set_attacks(pawns: BitBoard, side: Colour) -> BitBoard {
-    let pawns = pawns.0;
-    if matches!(side, Colour::White) {
-        BitBoard((pawns & !FILE_A_U64) << 7 | (pawns & !FILE_H_U64) << 9)
-    } else {
-        BitBoard((pawns & !FILE_A_U64) >> 9 | (pawns & !FILE_H_U64) >> 7)
-    }
-}
-
-static PINNED_MOVES: [[BitBoard; 64]; 64] = const_array!(|king, 64| const_array!(|pinned, 64| {
-    let king = Square::new(king as u8);
-    let pinned = Square::new(pinned as u8);
-
-    if bishop_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
-        bishop_attacks(BitBoard::EMPTY.0, king.index())
-            .and(bishop_attacks(king.to_board().0, pinned.index()))
-    } else if rook_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
-        rook_attacks(BitBoard::EMPTY.0, king.index())
-            .and(rook_attacks(king.to_board().0, pinned.index()))
-    } else {
-        BitBoard::EMPTY
-    }
-}));
-
-pub fn pinned_moves(king_sq: Square, pinned: Square) -> BitBoard {
-    PINNED_MOVES[king_sq.index()][pinned.index()]
-}
-
-static BETWEEN: [[BitBoard; 64]; 64] = const_array!(|i, 64| const_array!(|j, 64| {
-    let i = Square::new(i as u8);
-    let j = Square::new(j as u8);
-
-    if rook_attacks(BitBoard::EMPTY.0, i.index()).contains(j) {
-        rook_attacks(j.to_board().0, i.index()).and(rook_attacks(i.to_board().0, j.index()))
-    } else if bishop_attacks(BitBoard::EMPTY.0, i.index()).contains(j) {
-        bishop_attacks(j.to_board().0, i.index()).and(bishop_attacks(i.to_board().0, j.index()))
-    } else {
-        BitBoard::EMPTY
-    }
-}));
-
-pub fn between(sq1: Square, sq2: Square) -> BitBoard {
+pub const fn between(sq1: Square, sq2: Square) -> BitBoard {
     BETWEEN[sq1.index()][sq2.index()]
+}
+
+const fn make_pinned_moves_table() -> [[BitBoard; 64]; 64] {
+    let mut table = [[BitBoard::EMPTY; 64]; 64];
+    let mut king_idx = 0;
+    while king_idx < 64 {
+        let mut pinned_idx = 0;
+        while pinned_idx < 64 {
+            let king = Square::new(king_idx as u8);
+            let pinned = Square::new(pinned_idx as u8);
+
+            table[king_idx][pinned_idx] =
+                if bishop_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
+                    bishop_attacks(BitBoard::EMPTY.0, king.index())
+                        .and(bishop_attacks(king.to_board().0, pinned.index()))
+                } else if rook_attacks(BitBoard::EMPTY.0, pinned.index()).contains(king) {
+                    rook_attacks(BitBoard::EMPTY.0, king.index())
+                        .and(rook_attacks(king.to_board().0, pinned.index()))
+                } else {
+                    BitBoard::EMPTY
+                };
+
+            pinned_idx += 1;
+        }
+        king_idx += 1;
+    }
+    table
+}
+
+pub static PINNED_MOVES: [[BitBoard; 64]; 64] = make_pinned_moves_table();
+
+pub const fn pinned_moves(king_sq: Square, pinned: Square) -> BitBoard {
+    PINNED_MOVES[king_sq.index()][pinned.index()]
 }
 
 struct SMasks {

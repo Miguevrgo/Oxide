@@ -2,7 +2,7 @@ use crate::game::board::Board;
 use std::time::Instant;
 
 impl Board {
-    fn bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
+    fn non_bulk_perft<const ROOT: bool>(&self, depth: usize) -> usize {
         if depth == 0 {
             return 1;
         }
@@ -19,7 +19,7 @@ impl Board {
             } else {
                 let mut new = *self;
                 new.make_move(m);
-                let count = new.bulk_perft::<false>(depth - 1);
+                let count = new.non_bulk_perft::<false>(depth - 1);
 
                 total += count;
 
@@ -34,7 +34,7 @@ impl Board {
 
     pub fn perft(&self, depth: usize) -> usize {
         let start = Instant::now();
-        let total_nodes = self.bulk_perft::<true>(depth);
+        let total_nodes = self.non_bulk_perft::<true>(depth);
         let duration = start.elapsed().as_millis() as usize;
         let perft = total_nodes / duration.max(1) / 1_000;
         println!("\n{total_nodes} nodes in {duration:?} - {perft} Mn/s");
