@@ -31,9 +31,8 @@ This engine is designed to be both a learning experience and a playground for ex
 
 `Oxide` is now a decent engine, however there is still room for improvement:
 
-- **Enhance Search:** Using tables such as continuation history and correction history. Testing some prunings for the negamax move loop.
-- **NNUE**: I am finally confident that I understand each of the techniques used in Oxide network, however I would like testing other configurations,
-maybe multilayer, bigger hidden layer, 8 buckets...
+- **Enhance Search:** Using tables such as continuation history. Testing some prunings for the negamax move loop.
+- **NNUE**: I would like testing and learning other configurations.
 
 ## Getting Started
 
