@@ -242,7 +242,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut move_idx = 0;
     let lmr_ready = depth > 1 && !in_check;
     let lmr_depth = (depth as f64).ln() / (LMR_DIV);
-    let can_prune = !pv_node && !in_check;
     let mut quiets_tried = Vec::with_capacity(16);
     let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
