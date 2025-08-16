@@ -31,22 +31,6 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Self {
-        Board {
-            pieces: [BitBoard::EMPTY; 6],
-            sides: [BitBoard::EMPTY; 2],
-            piece_map: [Piece::Empty; Square::COUNT],
-            en_passant: None,
-            castling_rights: CastlingRights::NONE,
-            halfmoves: 0,
-            side: Colour::White,
-            hash: ZHash::NULL,
-            checkers: BitBoard::EMPTY,
-            threats: BitBoard::EMPTY,
-            pinned: BitBoard::EMPTY,
-        }
-    }
-
     pub fn default() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     }
@@ -315,7 +299,7 @@ impl Board {
     }
 
     pub fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
-        let mut moves = MoveList::new();
+        let mut moves = MoveList::default();
         let side_idx = side as usize;
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
@@ -696,7 +680,7 @@ impl Board {
         }
 
         let board_layout = fen[0];
-        let mut board = Board::new();
+        let mut board = Board::default();
         let (mut row, mut col): (u8, u8) = (7, 0);
         let mut tokens = 0;
 

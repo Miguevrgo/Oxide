@@ -307,21 +307,16 @@ pub struct MoveList {
 
 impl Default for MoveList {
     fn default() -> Self {
-        Self::new()
+        Self {
+            moves: [Move::NULL; Self::SIZE],
+            len: 0,
+        }
     }
 }
 
 impl MoveList {
     // Pointer width 64
     pub const SIZE: usize = 252;
-
-    #[inline(always)]
-    pub const fn new() -> Self {
-        Self {
-            moves: [Move::NULL; Self::SIZE],
-            len: 0,
-        }
-    }
 
     pub fn len(&self) -> usize {
         self.len
