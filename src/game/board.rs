@@ -31,6 +31,22 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn new() -> Self {
+        Board {
+            pieces: [BitBoard::EMPTY; 6],
+            sides: [BitBoard::EMPTY; 2],
+            piece_map: [Piece::Empty; Square::COUNT],
+            en_passant: None,
+            castling_rights: CastlingRights::NONE,
+            halfmoves: 0,
+            side: Colour::White,
+            hash: ZHash::NULL,
+            checkers: BitBoard::EMPTY,
+            threats: BitBoard::EMPTY,
+            pinned: BitBoard::EMPTY,
+        }
+    }
+
     pub fn default() -> Self {
         Self::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
     }
@@ -680,7 +696,7 @@ impl Board {
         }
 
         let board_layout = fen[0];
-        let mut board = Board::default();
+        let mut board = Self::new();
         let (mut row, mut col): (u8, u8) = (7, 0);
         let mut tokens = 0;
 
