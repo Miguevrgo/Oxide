@@ -204,7 +204,7 @@ pub const MAX_PLY: usize = 128;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlyData {
-    pub killers: [Move; 2],
+    pub killer: Move,
     pub eval: i32,
     pub pv: MoveList,
 }
