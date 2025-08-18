@@ -141,6 +141,7 @@ impl UCIEngine {
         let mut winc: Option<usize> = None;
         let mut binc: Option<usize> = None;
         let mut moves_left: Option<f64> = None;
+        let mut movetime: Option<u128> = None;
 
         let mut i = 0;
         while i + 1 < args.len() {
@@ -153,6 +154,7 @@ impl UCIEngine {
                 "winc" => winc = args[i].parse().ok(),
                 "binc" => binc = args[i].parse().ok(),
                 "movestogo" => moves_left = args[i].parse().ok(),
+                "movetime" => movetime = args[i].parse().ok(),
                 _ => i -= 1,
             }
             i += 1;
@@ -180,6 +182,8 @@ impl UCIEngine {
                     }) as u128
             })
             .min((t as f64 * 0.95) as u128)
+        } else if let Some(time_tm) = movetime {
+            time_tm
         } else {
             MAX_TIME
         }
