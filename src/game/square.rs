@@ -59,11 +59,6 @@ impl Square {
     pub const fn row(&self) -> usize {
         self.0 as usize / 8
     }
-    pub fn jump(self, file_delta: i8) -> Self {
-        let file = (self.0 % 8) as i8;
-        let rank = (self.0 / 8) as i8 + file_delta;
-        Self((rank * 8 + file) as u8)
-    }
 
     /// Returns the column (file) of the square (0-7, where 0 is file a).
     pub const fn col(&self) -> usize {

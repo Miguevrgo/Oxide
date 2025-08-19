@@ -302,7 +302,7 @@ impl Board {
 #[derive(Clone, Copy)]
 pub struct MoveList {
     pub moves: [Move; MoveList::SIZE],
-    pub len: usize,
+    len: usize,
 }
 
 impl Default for MoveList {
@@ -316,22 +316,10 @@ impl Default for MoveList {
 
 impl MoveList {
     // Pointer width 64
-    pub const SIZE: usize = 252;
+    const SIZE: usize = 252;
 
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    #[inline(always)]
-    pub fn as_mut_slice(&mut self) -> &mut [Move] {
-        &mut self.moves[..self.len]
-    }
     pub fn as_slice(&self) -> &[Move] {
         &self.moves[..self.len]
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
     }
 
     pub fn push(&mut self, m: Move) {

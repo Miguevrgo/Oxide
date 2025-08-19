@@ -1,4 +1,5 @@
 use super::{
+    bitboard::BitBoard,
     board::Board,
     castle::CastlingRights,
     constants::{CASTLE_KEYS, EP_KEYS, PIECE_KEYS, SIDE_KEY},
@@ -15,10 +16,11 @@ impl ZHash {
     pub fn new(board: &Board) -> Self {
         let mut hash = Self::NULL;
 
-        for square in 0..64 {
-            if board.piece_at(Square::new(square)) != Piece::Empty {
-                hash.hash_piece(board.piece_at(Square::new(square)), Square::new(square));
-            }
+        let mut occ = board.sides[Colour::White as usize] | board.sides[Colour::Black as usize];
+        while occ != BitBoard::EMPTY {
+            let sq = occ.lsb();
+            hash.hash_piece(board.piece_at(sq), sq);
+            occ = occ.pop_bit(sq);
         }
 
         if let Some(square) = board.en_passant {

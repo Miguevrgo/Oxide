@@ -82,10 +82,6 @@ impl BitBoard {
 
     /// Starting ranks for pawns: White (rank 2) and Black (rank 7).
     pub const START_RANKS: [Self; 2] = [Self(0x000000000000FF00), Self(0x00FF000000000000)];
-    /// Ranks where promotion can occur: White (rank 7) and Black (rank 2).
-    pub const PROMO_RANKS: [Self; 2] = [Self(0xFF00000000000000), Self(0x00000000000000FF)];
-    /// Starting positions for both kings
-    pub const KING_START_POS: Self = Self(0x1000000000000010);
 
     /// Intermediate squares for white king-side castle
     pub const WHITE_KING_CASTLE: Self = Self(0x0000000000000060);
@@ -112,20 +108,6 @@ impl BitBoard {
     /// `true` if the square is occupied, `false` otherwise.
     pub fn get_bit(self, square: Square) -> bool {
         self.0 & (1u64 << square.index()) != 0
-    }
-
-    /// Sets the bit at the given square, indicating a piece is present.
-    ///
-    ///
-    /// # Arguments
-    ///
-    /// * `square` - The square where the bit will be set.
-    ///
-    /// # Returns
-    ///
-    /// A new `BitBoard` with the specified bit set.
-    pub fn set_bit(self, square: Square) -> Self {
-        Self(self.0 | (1u64 << square.index()))
     }
 
     /// Clears the bit at the given square, indicating the piece is removed.
