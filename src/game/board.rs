@@ -598,7 +598,12 @@ impl Board {
         let mut score = if mt == MoveKind::EnPassant {
             PIECE_VALUES[Piece::WP.index()] - threshold
         } else {
-            let mut value = PIECE_VALUES[self.piece_at(dest).index()];
+            let cap = self.piece_at(dest);
+            let mut value = if cap == Piece::Empty {
+                0
+            } else {
+                PIECE_VALUES[cap.index()]
+            };
             if mt.is_promotion() {
                 next_piece = Some(mt.get_promotion(self.side).index());
                 unsafe {

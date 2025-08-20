@@ -272,6 +272,9 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             reduction = (LMR_BASE + lmr_depth * (move_idx as f64).ln()) as i16;
             reduction -= i16::from(pv_node);
             reduction -= i16::from(new_in_check);
+            if ms <= MAX_HISTORY {
+                reduction -= ms as i16 / 8192;
+            }
             reduction = reduction.clamp(0, depth as i16 - 1);
         }
 
