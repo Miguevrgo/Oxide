@@ -3,12 +3,12 @@ use crate::game::bitboard::BitBoard;
 use super::square::Square;
 
 pub const PIECE_VALUES: [i32; 6] = [
-    100,  // Pawn
-    420,  // Knight
-    430,  // Bishop
-    600,  // Rook
-    1000, // Queen
-    2000, // King
+    98,   // Pawn
+    435,  // Knight
+    422,  // Bishop
+    593,  // Rook
+    1011, // Queen
+    0,    // King
 ];
 
 const fn make_between_table() -> [[BitBoard; 64]; 64] {
