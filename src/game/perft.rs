@@ -8,7 +8,7 @@ impl Board {
         }
 
         let mut total = 0;
-        let moves = self.generate_pseudo_moves::<true>(self.side);
+        let moves = self.generate_pseudo_moves::<true>();
         for m in &moves {
             if !self.is_legal(m) {
                 continue;

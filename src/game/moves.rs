@@ -1,6 +1,5 @@
-use std::hint::unreachable_unchecked;
-
 use crate::game::square::Square;
+use std::hint::unreachable_unchecked;
 
 use super::{
     bitboard::BitBoard,
@@ -153,8 +152,8 @@ impl Board {
         }
     }
 
-    pub fn all_king_moves<const QUIET: bool>(&self, side: Colour, occ: u64, moves: &mut MoveList) {
-        let king_bb = self.pieces[Piece::WK.index()] & self.sides[side as usize];
+    pub fn all_king_moves<const QUIET: bool>(&self, occ: u64, moves: &mut MoveList) {
+        let king_bb = self.pieces[Piece::WK.index()] & self.sides[self.side as usize];
         let src = king_bb.lsb();
         let attacks = KING_ATTACKS[src.index()];
 
@@ -166,7 +165,7 @@ impl Board {
                 quiets = quiets.pop_bit(dst);
             }
 
-            for &dest in &CASTLE[side as usize] {
+            for &dest in &CASTLE[self.side as usize] {
                 if self.is_castle_legal(dest) {
                     moves.push(Move::new(src, dest, MoveKind::Castle));
                 }
@@ -181,13 +180,8 @@ impl Board {
         }
     }
 
-    pub fn all_knight_moves<const QUIET: bool>(
-        &self,
-        side: Colour,
-        occ: BitBoard,
-        moves: &mut MoveList,
-    ) {
-        let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[side as usize];
+    pub fn all_knight_moves<const QUIET: bool>(&self, occ: BitBoard, moves: &mut MoveList) {
+        let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[self.side as usize];
         while knight_bb != BitBoard::EMPTY {
             let src = knight_bb.lsb();
             let attacks = KNIGHT_ATTACKS[src.index()];
@@ -211,12 +205,8 @@ impl Board {
         }
     }
 
-    pub fn all_pawn_moves<const QUIET: bool>(
-        &self,
-        colour: Colour,
-        occ: BitBoard,
-        moves: &mut MoveList,
-    ) {
+    pub fn all_pawn_moves<const QUIET: bool>(&self, occ: BitBoard, moves: &mut MoveList) {
+        let colour = self.side;
         let start_rank = BitBoard::START_RANKS[colour as usize];
         let promo_rank = BitBoard::START_RANKS[!colour as usize];
         let pawns = self.pieces[Piece::WP as usize] & self.sides[colour as usize];
@@ -354,6 +344,24 @@ impl MoveList {
         self.len = old.len + 1;
         self.moves[0] = m;
         self.moves[1..=old.len].copy_from_slice(&old.moves[..old.len]);
+    }
+}
+
+pub struct MovePicker {
+    pub moves: MoveList,
+    pub scores: [i32; MoveList::SIZE],
+}
+
+impl MovePicker {
+    pub fn new<const QUIET: bool>(board: &Board) -> Self {
+        Self {
+            moves: board.generate_pseudo_moves::<QUIET>(),
+            scores: [0; MoveList::SIZE],
+        }
+    }
+
+    pub fn next(&mut self) -> Option<(Move, i32)> {
+        self.moves.pick(&mut self.scores)
     }
 }
 

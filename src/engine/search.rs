@@ -1,5 +1,5 @@
 use crate::engine::tables::{history_bonus, Bound, SearchData};
-use crate::game::moves::MoveKind;
+use crate::game::moves::{MoveKind, MovePicker};
 use crate::game::{board::Board, moves::Move};
 
 pub const INF: i32 = 2 << 16;
@@ -112,18 +112,22 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
 
     alpha = alpha.max(best_eval);
 
-    let mut moves = board.generate_pseudo_moves::<false>(board.side);
-    let mut scores = [0; 252];
-    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
-        scores[i] = mvv_lva(*m, board);
-    });
+    let mut picker = MovePicker::new::<false>(board);
+    picker
+        .moves
+        .as_slice()
+        .iter()
+        .enumerate()
+        .for_each(|(i, m)| {
+            picker.scores[i] = mvv_lva(*m, board);
+        });
 
     let mut best_move = Move::NULL;
     let mut bound = Bound::Upper;
 
     data.ply += 1;
 
-    while let Some((m, _)) = moves.pick(&mut scores) {
+    while let Some((m, _)) = picker.next() {
         if !board.is_legal(m) {
             continue;
         }
@@ -229,12 +233,15 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         depth -= 1;
     }
 
-    let mut moves = board.generate_pseudo_moves::<true>(board.side);
-    let mut scores = [0; 252];
-
-    moves.as_slice().iter().enumerate().for_each(|(i, m)| {
-        scores[i] = move_score(m, board, tt_move, data);
-    });
+    let mut picker = MovePicker::new::<true>(board);
+    picker
+        .moves
+        .as_slice()
+        .iter()
+        .enumerate()
+        .for_each(|(i, m)| {
+            picker.scores[i] = move_score(m, board, tt_move, data);
+        });
 
     let old_alpha = alpha;
     let mut best_move = Move::NULL;
@@ -246,7 +253,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
 
-    while let Some((m, ms)) = moves.pick(&mut scores) {
+    while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
             // History pruning
             if depth <= 2 && ms < HP_THRESHOLD {

@@ -314,13 +314,13 @@ impl Board {
             }
     }
 
-    pub fn generate_pseudo_moves<const QUIET: bool>(&self, side: Colour) -> MoveList {
+    pub fn generate_pseudo_moves<const QUIET: bool>(&self) -> MoveList {
         let mut moves = MoveList::default();
-        let side_idx = side as usize;
+        let side_idx = self.side as usize;
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
         // King moves
-        self.all_king_moves::<QUIET>(side, occ.0, &mut moves);
+        self.all_king_moves::<QUIET>(occ.0, &mut moves);
 
         // If there is more than 1 checker, the only possible move comes from the king
         if self.checkers.count_bits() > 1 {
@@ -328,10 +328,10 @@ impl Board {
         }
 
         // Pawn moves
-        self.all_pawn_moves::<QUIET>(side, occ, &mut moves);
+        self.all_pawn_moves::<QUIET>(occ, &mut moves);
 
         // Knights
-        self.all_knight_moves::<QUIET>(side, occ, &mut moves);
+        self.all_knight_moves::<QUIET>(occ, &mut moves);
 
         // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
