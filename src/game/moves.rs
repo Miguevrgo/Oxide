@@ -11,10 +11,18 @@ use super::{
 /// A move needs 16 bits to be stored, the information is contained
 /// in the following way:
 ///
-/// bits [0-5]: Origin square (2^6 = 64 possible positions)
-/// bits [6-11]: Destination square (2^6 = 64 possible positions)
-/// bits [12-13]: Promotion piece type (Knight|Rook|Queen|Bishop)
-/// bits [14-15]: If the move is a promotion, an en passant move or castling
+/// ```text
+/// 15   14│13  12│11              6 │5                0
+/// ┌──────┼──────┼──────────────────┼──────────────────┐
+/// │ type │ prom │      dest        │      origin      │
+/// └──────┴──────┴──────────────────┴──────────────────┘
+///    │      │    └─┬──────────────┘ └─┬──────────────┘
+///    │      │      │                  └─ Origin Square (64 positions).
+///    │      │      └─ Destination Square (64 positions).
+///    │      └─ Promotion piece (Knight|Rook|Queen|Bishop).
+///    └─ Move type. Indicates whether it is a promotion, en passant,
+///       capture or castling move.
+///```
 #[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Default, Hash, Ord)]
 pub struct Move(pub u16);
 
