@@ -8,10 +8,10 @@ pub const DRAW: i32 = 0;
 pub const MAX_DEPTH: u8 = 64;
 
 // Move Scores
-const TT_SCORE: i32 = 10_000_000;
-const PROM_SCORE: i32 = 80_000;
-const CAP_SCORE: i32 = 90_000;
-const KILL_SCORE: i32 = 70_000;
+pub const TT_SCORE: i32 = 10_000_000;
+pub const PROM_SCORE: i32 = 80_000;
+pub const CAP_SCORE: i32 = 90_000;
+pub const KILL_SCORE: i32 = 70_000;
 
 // Search Parameters
 const ASPIRATION_DELTA: i32 = 53;
@@ -113,14 +113,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
     alpha = alpha.max(best_eval);
 
     let mut picker = MovePicker::new::<false>(board);
-    picker
-        .moves
-        .as_slice()
-        .iter()
-        .enumerate()
-        .for_each(|(i, m)| {
-            picker.scores[i] = if board.see(*m, 0) { CAP_SCORE } else { 0 };
-        });
+    picker.score_caps(board, data);
 
     let mut best_move = Move::NULL;
     let mut bound = Bound::Upper;

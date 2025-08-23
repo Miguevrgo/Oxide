@@ -1,4 +1,10 @@
-use crate::game::square::Square;
+use crate::{
+    engine::{
+        search::{CAP_SCORE, PROM_SCORE},
+        tables::SearchData,
+    },
+    game::square::Square,
+};
 use std::hint::unreachable_unchecked;
 
 use super::{
@@ -385,6 +391,24 @@ impl MovePicker {
         Self {
             moves: board.generate_pseudo_moves::<QUIET, true>(),
             scores: [0; MoveList::SIZE],
+        }
+    }
+
+    pub fn score_caps(&mut self, board: &Board, data: &SearchData) {
+        for (i, m) in self.moves.as_slice().iter().enumerate() {
+            let kind = m.get_type();
+
+            if kind == MoveKind::QueenPromotion {
+                self.scores[i] = PROM_SCORE;
+            }
+
+            let see = board.see(*m, 0);
+            self.scores[i] = CAP_SCORE * see as i32;
+            if m.get_type().is_capture() {
+                self.scores[i] += data.cap_history.score[board.piece_at(m.get_source()) as usize]
+                    [m.get_dest().index()][board.capture_piece(*m).index()]
+                    as i32;
+            }
         }
     }
 
