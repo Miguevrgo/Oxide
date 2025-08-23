@@ -314,13 +314,13 @@ impl Board {
             }
     }
 
-    pub fn generate_pseudo_moves<const QUIET: bool>(&self) -> MoveList {
+    pub fn generate_pseudo_moves<const QUIET: bool, const CAP: bool>(&self) -> MoveList {
         let mut moves = MoveList::default();
         let side_idx = self.side as usize;
         let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
 
         // King moves
-        self.all_king_moves::<QUIET>(occ.0, &mut moves);
+        self.all_king_moves::<QUIET, CAP>(occ.0, &mut moves);
 
         // If there is more than 1 checker, the only possible move comes from the king
         if self.checkers.count_bits() > 1 {
@@ -328,16 +328,16 @@ impl Board {
         }
 
         // Pawn moves
-        self.all_pawn_moves::<QUIET>(occ, &mut moves);
+        self.all_pawn_moves::<QUIET, CAP>(occ, &mut moves);
 
         // Knights
-        self.all_knight_moves::<QUIET>(occ, &mut moves);
+        self.all_knight_moves::<QUIET, CAP>(occ, &mut moves);
 
         // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
             let src = bishop_bb.lsb();
-            self.all_slider_moves::<QUIET>(src, occ.0, bishop_attacks, &mut moves);
+            self.all_slider_moves::<QUIET, CAP>(src, occ.0, bishop_attacks, &mut moves);
             bishop_bb = bishop_bb.pop_bit(src);
         }
 
@@ -345,7 +345,7 @@ impl Board {
         let mut rook_bb = self.pieces[Piece::WR.index()] & self.sides[side_idx];
         while rook_bb != BitBoard::EMPTY {
             let src = rook_bb.lsb();
-            self.all_slider_moves::<QUIET>(src, occ.0, rook_attacks, &mut moves);
+            self.all_slider_moves::<QUIET, CAP>(src, occ.0, rook_attacks, &mut moves);
             rook_bb = rook_bb.pop_bit(src);
         }
 
@@ -353,7 +353,7 @@ impl Board {
         let mut queen_bb = self.pieces[Piece::WQ.index()] & self.sides[side_idx];
         while queen_bb != BitBoard::EMPTY {
             let src = queen_bb.lsb();
-            self.all_slider_moves::<QUIET>(src, occ.0, queen_attacks, &mut moves);
+            self.all_slider_moves::<QUIET, CAP>(src, occ.0, queen_attacks, &mut moves);
             queen_bb = queen_bb.pop_bit(src);
         }
 

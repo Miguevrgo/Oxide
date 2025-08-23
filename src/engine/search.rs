@@ -119,7 +119,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         .iter()
         .enumerate()
         .for_each(|(i, m)| {
-            picker.scores[i] = mvv_lva(*m, board);
+            picker.scores[i] = if board.see(*m, 0) { CAP_SCORE } else { 0 };
         });
 
     let mut best_move = Move::NULL;
@@ -370,13 +370,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     best_score
 }
 
-#[inline]
-fn mvv_lva(m: Move, board: &Board) -> i32 {
-    let victim = board.piece_at(m.get_dest()).index() as i32;
-    let attacker = board.piece_at(m.get_source()).index() as i32;
-    8 * victim - attacker
-}
-
 pub fn move_score(m: &Move, board: &Board, tt_move: Option<Move>, data: &SearchData) -> i32 {
     if Some(*m) == tt_move {
         return TT_SCORE;
@@ -391,7 +384,6 @@ pub fn move_score(m: &Move, board: &Board, tt_move: Option<Move>, data: &SearchD
     if kind.is_capture() {
         let see = board.see(*m, 0);
         return CAP_SCORE * see as i32
-            + mvv_lva(*m, board)
             + data.cap_history.score[board.piece_at(m.get_source()) as usize][m.get_dest().index()]
                 [board.capture_piece(*m).index()] as i32;
     }
