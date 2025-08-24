@@ -1,5 +1,5 @@
 use crate::engine::tables::{history_bonus, Bound, SearchData};
-use crate::game::moves::{MoveKind, MovePicker};
+use crate::game::moves::MovePicker;
 use crate::game::{board::Board, moves::Move};
 
 pub const INF: i32 = 2 << 16;
@@ -227,14 +227,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     let mut picker = MovePicker::new::<true>(board);
-    picker
-        .moves
-        .as_slice()
-        .iter()
-        .enumerate()
-        .for_each(|(i, m)| {
-            picker.scores[i] = move_score(m, board, tt_move, data);
-        });
+    picker.score_moves(board, tt_move, data);
 
     let old_alpha = alpha;
     let mut best_move = Move::NULL;
@@ -361,29 +354,4 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     best_score
-}
-
-pub fn move_score(m: &Move, board: &Board, tt_move: Option<Move>, data: &SearchData) -> i32 {
-    if Some(*m) == tt_move {
-        return TT_SCORE;
-    }
-
-    let kind = m.get_type();
-
-    if kind == MoveKind::QueenPromotion {
-        return PROM_SCORE;
-    }
-
-    if kind.is_capture() {
-        let see = board.see(*m, 0);
-        return CAP_SCORE * see as i32
-            + data.cap_history.score[board.piece_at(m.get_source()) as usize][m.get_dest().index()]
-                [board.capture_piece(*m).index()] as i32;
-    }
-
-    if *m == data.ply_data[data.ply].killer {
-        return KILL_SCORE;
-    }
-
-    data.history.score[board.side as usize][m.get_source().index()][m.get_dest().index()] as i32
 }

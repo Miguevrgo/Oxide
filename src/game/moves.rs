@@ -1,6 +1,6 @@
 use crate::{
     engine::{
-        search::{CAP_SCORE, PROM_SCORE},
+        search::{CAP_SCORE, KILL_SCORE, PROM_SCORE, TT_SCORE},
         tables::SearchData,
     },
     game::square::Square,
@@ -91,6 +91,7 @@ impl std::fmt::Display for Move {
         }
     }
 }
+
 /// MoveKind is a 4-bit enum that represents the type of move
 /// Structured as follows:
 ///
@@ -351,25 +352,6 @@ impl MoveList {
         self.len += 1;
     }
 
-    pub fn pick(&mut self, scores: &mut [i32; MoveList::SIZE]) -> Option<(Move, i32)> {
-        if self.len == 0 {
-            return None;
-        }
-
-        let (mut best_idx, mut best_score) = (0, i32::MIN);
-
-        if let Some((i, &score)) = (0..self.len).zip(scores.iter()).max_by_key(|&(_, &s)| s) {
-            best_score = score;
-            best_idx = i;
-        }
-
-        self.len -= 1;
-        self.moves.swap(best_idx, self.len);
-        scores.swap(best_idx, self.len);
-
-        Some((self.moves[self.len], best_score))
-    }
-
     pub fn clear(&mut self) {
         self.len = 0;
     }
@@ -396,12 +378,6 @@ impl MovePicker {
 
     pub fn score_caps(&mut self, board: &Board, data: &SearchData) {
         for (i, m) in self.moves.as_slice().iter().enumerate() {
-            let kind = m.get_type();
-
-            if kind == MoveKind::QueenPromotion {
-                self.scores[i] = PROM_SCORE;
-            }
-
             let see = board.see(*m, 0);
             self.scores[i] = CAP_SCORE * see as i32;
             if m.get_type().is_capture() {
@@ -412,8 +388,60 @@ impl MovePicker {
         }
     }
 
+    pub fn score_moves(&mut self, board: &Board, tt_move: Option<Move>, data: &SearchData) {
+        for (i, m) in self.moves.as_slice().iter().enumerate() {
+            if Some(*m) == tt_move {
+                self.scores[i] = TT_SCORE;
+                continue;
+            }
+
+            let kind = m.get_type();
+
+            if kind == MoveKind::QueenPromotion {
+                self.scores[i] = PROM_SCORE;
+                continue;
+            }
+
+            if kind.is_capture() {
+                let see = board.see(*m, 0);
+                self.scores[i] = CAP_SCORE * see as i32
+                    + data.cap_history.score[board.piece_at(m.get_source()) as usize]
+                        [m.get_dest().index()][board.capture_piece(*m).index()]
+                        as i32;
+                continue;
+            }
+
+            if *m == data.ply_data[data.ply].killer {
+                self.scores[i] = KILL_SCORE;
+                continue;
+            }
+
+            self.scores[i] = data.history.score[board.side as usize][m.get_source().index()]
+                [m.get_dest().index()] as i32
+        }
+    }
+
     pub fn next(&mut self) -> Option<(Move, i32)> {
-        self.moves.pick(&mut self.scores)
+        if self.moves.len == 0 {
+            return None;
+        }
+
+        let mut best_idx = 0;
+        let mut best_score = i32::MIN;
+
+        for i in 0..self.moves.len {
+            let score = self.scores[i];
+            if score > best_score {
+                best_score = score;
+                best_idx = i;
+            }
+        }
+
+        self.moves.len -= 1;
+        self.moves.moves.swap(best_idx, self.moves.len);
+        self.scores.swap(best_idx, self.moves.len);
+
+        Some((self.moves.moves[self.moves.len], best_score))
     }
 }
 
