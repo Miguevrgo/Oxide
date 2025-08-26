@@ -14,26 +14,26 @@ pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
 // Search Parameters
-const ASPIRATION_DELTA: i32 = 53;
-const ASPIRATION_DELTA_LIMIT: i32 = 447;
+const ASPIRATION_DELTA: i32 = 45;
+const ASPIRATION_DELTA_LIMIT: i32 = 500;
 
 const NMP_MIN_DEPTH: u8 = 2;
-const NMP_BASE_REDUCTION: u8 = 5;
-const NMP_DIVISOR: u8 = 4;
+const NMP_BASE_REDUCTION: u8 = 6;
+const NMP_DIVISOR: u8 = 5;
 
-const RFP_DEPTH: u8 = 7;
-const RFP_IMPROVING: i32 = 34;
+const RFP_DEPTH: u8 = 8;
+const RFP_IMPROVING: i32 = 35;
 const RFP_MARGIN: i32 = 75;
-const LMR_DIV: f64 = 1.96;
-const LMR_BASE: f64 = 0.74;
+const LMR_DIV: f64 = 1.8;
+const LMR_BASE: f64 = 0.88;
 
-const RAZOR_DEPTH: u8 = 2;
-const RAZOR_MARGIN: i32 = 412;
-const HP_THRESHOLD: i32 = -3297;
+const RAZOR_DEPTH: u8 = 4;
+const RAZOR_MARGIN: i32 = 450;
+const HP_THRESHOLD: i32 = -3550;
 
-pub const HISTORY_MAX_BONUS: i16 = 1500;
-pub const HISTORY_FACTOR: i16 = 355;
-pub const HISTORY_OFFSET: i16 = 345;
+pub const HISTORY_MAX_BONUS: i16 = 1700;
+pub const HISTORY_FACTOR: i16 = 353;
+pub const HISTORY_OFFSET: i16 = 343;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
