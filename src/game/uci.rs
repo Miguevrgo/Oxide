@@ -56,6 +56,98 @@ impl UCIEngine {
                 println!("id author {AUTHOR}");
                 println!("option name Hash type spin default 32 min 1 max 4096");
                 println!("option name Threads type spin default 1 min 1 max 1");
+                println!("option name Hash type spin default 32 min 1 max 4096");
+                println!("option name Threads type spin default 1 min 1 max 1");
+
+                // Aspiration
+                println!(
+                    "option name AspirationDelta type spin default {} min 10 max 55",
+                    self.data.params.aspiration_delta
+                );
+                println!(
+                    "option name AspirationDeltaLimit type spin default {} min 300 max 600",
+                    self.data.params.aspiration_delta_limit
+                );
+                println!(
+                    "option name AspirationMult type spin default {} min 1 max 3",
+                    self.data.params.aspiration_mult
+                );
+                println!(
+                    "option name AspirationDiv type spin default {} min 1 max 4",
+                    self.data.params.aspiration_div
+                );
+
+                // NMP
+                println!(
+                    "option name NMPMinDepth type spin default {} min 2 max 8",
+                    self.data.params.nmp_min_depth
+                );
+                println!(
+                    "option name NMPBaseReduction type spin default {} min 2 max 8",
+                    self.data.params.nmp_base_reduction
+                );
+                println!(
+                    "option name NMPDivisor type spin default {} min 2 max 8",
+                    self.data.params.nmp_divisor
+                );
+
+                // RFP
+                println!(
+                    "option name RFPDepth type spin default {} min 3 max 10",
+                    self.data.params.rfp_depth
+                );
+                println!(
+                    "option name RFPImproving type spin default {} min 0 max 200",
+                    self.data.params.rfp_improving
+                );
+                println!(
+                    "option name RFPMargin type spin default {} min 0 max 200",
+                    self.data.params.rfp_margin
+                );
+
+                // LMR
+                println!(
+                    "option name LMRDiv type spin default {} min 130 max 240",
+                    self.data.params.lmr_div
+                );
+                println!(
+                    "option name LMRBase type spin default {} min 50 max 150",
+                    self.data.params.lmr_base
+                );
+
+                // Razoring
+                println!(
+                    "option name RazorDepth type spin default {} min 2 max 8",
+                    self.data.params.razor_depth
+                );
+                println!(
+                    "option name RazorMargin type spin default {} min 0 max 600",
+                    self.data.params.razor_margin
+                );
+
+                // History Pruning
+                println!(
+                    "option name HPThreshold type spin default {} min -5000 max 0",
+                    self.data.params.hp_threshold
+                );
+                println!(
+                    "option name HPDepth type spin default {} min 2 max 8",
+                    self.data.params.hp_depth
+                );
+
+                // History Heuristic
+                println!(
+                    "option name HistoryMaxBonus type spin default {} min 1200 max 1800",
+                    self.data.params.history_max_bonus
+                );
+                println!(
+                    "option name HistoryFactor type spin default {} min 100 max 400",
+                    self.data.params.history_factor
+                );
+                println!(
+                    "option name HistoryOffset type spin default {} min 100 max 400 ",
+                    self.data.params.history_offset
+                );
                 println!("uciok");
             }
             "ucinewgame" => {
@@ -88,6 +180,114 @@ impl UCIEngine {
                                 if n != 1 {
                                     println!("Only one thread supported!")
                                 }
+                            }
+                        }
+                        // Aspiration
+                        "AspirationDelta" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.aspiration_delta = v;
+                            }
+                        }
+                        "AspirationDeltaLimit" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.aspiration_delta_limit = v;
+                            }
+                        }
+                        "AspirationMult" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.aspiration_mult = v;
+                            }
+                        }
+                        "AspirationDiv" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.aspiration_div = v;
+                            }
+                        }
+
+                        // NMP
+                        "NMPMinDepth" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.nmp_min_depth = v;
+                            }
+                        }
+                        "NMPBaseReduction" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.nmp_base_reduction = v;
+                            }
+                        }
+                        "NMPDivisor" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.nmp_divisor = v;
+                            }
+                        }
+
+                        // RFP
+                        "RFPDepth" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.rfp_depth = v;
+                            }
+                        }
+                        "RFPImproving" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.rfp_improving = v;
+                            }
+                        }
+                        "RFPMargin" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.rfp_margin = v;
+                            }
+                        }
+
+                        // LMR
+                        "LMRDiv" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse::<u32>() {
+                                self.data.params.lmr_div = v as f64 / 100.0;
+                            }
+                        }
+                        "LMRBase" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse::<u32>() {
+                                self.data.params.lmr_base = v as f64 / 100.0;
+                            }
+                        }
+
+                        // Razoring
+                        "RazorDepth" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.razor_depth = v;
+                            }
+                        }
+                        "RazorMargin" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.razor_margin = v;
+                            }
+                        }
+
+                        // History Pruning
+                        "HPThreshold" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.hp_threshold = v;
+                            }
+                        }
+                        "HPDepth" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.hp_depth = v;
+                            }
+                        }
+
+                        // History Heuristic
+                        "HistoryMaxBonus" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.history_max_bonus = v;
+                            }
+                        }
+                        "HistoryFactor" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.history_factor = v;
+                            }
+                        }
+                        "HistoryOffset" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.history_offset = v;
                             }
                         }
                         _ => {}

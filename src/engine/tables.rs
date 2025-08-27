@@ -1,6 +1,5 @@
-use crate::engine::search::{
-    HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, MATE, MAX_DEPTH, MAX_HISTORY,
-};
+use crate::engine::search::{INF, MATE, MAX_DEPTH, MAX_HISTORY};
+use crate::engine::tuning::Params;
 use crate::game::board::Board;
 use crate::game::moves::{Move, MoveList};
 use crate::game::piece::Colour;
@@ -118,8 +117,8 @@ impl TranspositionTable {
 
 /// History Gravity bonus
 /// https://www.chessprogramming.org/History_Heuristic
-pub fn history_bonus(depth: u8) -> i16 {
-    HISTORY_MAX_BONUS.min(HISTORY_FACTOR * depth as i16 - HISTORY_OFFSET)
+pub fn history_bonus(depth: u8, hmb: i16, hf: i16, ho: i16) -> i16 {
+    hmb.min(hf * depth as i16 - ho)
 }
 
 /// Taper history so it clamps to MAX
@@ -229,6 +228,9 @@ pub struct SearchData {
     pub cache: EvalTable,
     pub history: HistoryTable,
     pub cap_history: CaptureHistoryTable,
+
+    // Tuning
+    pub params: Params,
 }
 
 impl SearchData {
@@ -250,6 +252,8 @@ impl SearchData {
             cache: EvalTable::default(),
             history: HistoryTable::default(),
             cap_history: CaptureHistoryTable::default(),
+
+            params: Params::new(),
         }
     }
 

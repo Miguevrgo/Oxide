@@ -13,27 +13,6 @@ pub const PROM_SCORE: i32 = 80_000;
 pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
-// Search Parameters
-const ASPIRATION_DELTA: i32 = 45;
-const ASPIRATION_DELTA_LIMIT: i32 = 500;
-
-const NMP_MIN_DEPTH: u8 = 2;
-const NMP_BASE_REDUCTION: u8 = 6;
-const NMP_DIVISOR: u8 = 5;
-
-const RFP_DEPTH: u8 = 8;
-const RFP_IMPROVING: i32 = 35;
-const RFP_MARGIN: i32 = 75;
-const LMR_DIV: f64 = 1.8;
-const LMR_BASE: f64 = 0.88;
-
-const RAZOR_DEPTH: u8 = 4;
-const RAZOR_MARGIN: i32 = 450;
-const HP_THRESHOLD: i32 = -3550;
-
-pub const HISTORY_MAX_BONUS: i16 = 1700;
-pub const HISTORY_FACTOR: i16 = 353;
-pub const HISTORY_OFFSET: i16 = 343;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
@@ -61,7 +40,7 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
 }
 
 fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut SearchData) -> i32 {
-    let mut delta = ASPIRATION_DELTA;
+    let mut delta = data.params.aspiration_delta;
     let mut alpha = estimate - delta;
     let mut beta = estimate + delta;
     let mut depth = max_depth;
@@ -85,8 +64,8 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
             return score;
         }
 
-        delta += delta / 2;
-        if delta > ASPIRATION_DELTA_LIMIT {
+        delta += data.params.aspiration_mult * delta / data.params.aspiration_div;
+        if delta > data.params.aspiration_delta_limit {
             alpha = -INF;
             beta = INF;
         }
@@ -195,14 +174,17 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
         let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
-        let rfp_margin = RFP_MARGIN * depth as i32 - RFP_IMPROVING * improving as i32;
+        let rfp_margin =
+            data.params.rfp_margin * depth as i32 - data.params.rfp_improving * improving as i32;
 
-        if depth <= RFP_DEPTH && static_eval - rfp_margin >= beta {
+        if depth <= data.params.rfp_depth && static_eval - rfp_margin >= beta {
             return static_eval;
         }
 
         // Razoring
-        if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
+        if depth < data.params.razor_depth
+            && static_eval + data.params.razor_margin * (depth as i32) < alpha
+        {
             let qeval = quiescence(board, alpha, beta, data);
             if qeval < alpha {
                 return qeval;
@@ -210,10 +192,10 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         // Null Move Pruning
-        if depth >= NMP_MIN_DEPTH && !board.is_king_pawn() {
+        if depth >= data.params.nmp_min_depth && !board.is_king_pawn() {
             let mut null_board = *board;
             null_board.make_null_move();
-            let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
+            let r = (data.params.nmp_base_reduction + depth / data.params.nmp_divisor).min(depth);
             let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, data);
             if null_score >= beta {
                 return null_score;
@@ -234,7 +216,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut best_score = -INF;
     let mut move_idx = 0;
     let lmr_ready = depth > 1 && !in_check;
-    let lmr_depth = (depth as f64).ln() / (LMR_DIV);
+    let lmr_depth = (depth as f64).ln() / (data.params.lmr_div);
     let mut quiets_tried = Vec::with_capacity(16);
     let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
@@ -242,7 +224,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
             // History pruning
-            if depth <= 2 && ms < HP_THRESHOLD {
+            if depth <= data.params.hp_depth && ms < data.params.hp_threshold {
                 break;
             }
         }
@@ -262,7 +244,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
         // Late Move Reduction
         if lmr_ready && ms < KILL_SCORE {
-            reduction = (LMR_BASE + lmr_depth * (move_idx as f64).ln()) as i16;
+            reduction = (data.params.lmr_base + lmr_depth * (move_idx as f64).ln()) as i16;
             reduction -= i16::from(pv_node);
             reduction -= i16::from(new_in_check);
             if ms <= MAX_HISTORY {
@@ -301,7 +283,12 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         alpha = alpha.max(score);
 
         if alpha >= beta {
-            let history_bonus = history_bonus(depth);
+            let history_bonus = history_bonus(
+                depth,
+                data.params.history_max_bonus,
+                data.params.history_factor,
+                data.params.history_offset,
+            );
             if !m.get_type().is_capture() {
                 if m != data.ply_data[data.ply].killer {
                     data.ply_data[data.ply].killer = m;
