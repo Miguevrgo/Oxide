@@ -244,9 +244,9 @@ impl SearchData {
             best_move: Move::NULL,
             eval: -INF,
 
-            stack: Vec::with_capacity(16),
+            stack: Vec::with_capacity(32),
             ply_data: [(); MAX_PLY].map(|_| PlyData::default()),
-            tt: TranspositionTable::with_size_mb(16),
+            tt: TranspositionTable::with_size_mb(32),
             cache: EvalTable::default(),
             history: HistoryTable::default(),
             cap_history: CaptureHistoryTable::default(),
