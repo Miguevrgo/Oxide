@@ -56,8 +56,6 @@ impl UCIEngine {
                 println!("id author {AUTHOR}");
                 println!("option name Hash type spin default 32 min 1 max 4096");
                 println!("option name Threads type spin default 1 min 1 max 1");
-                println!("option name Hash type spin default 32 min 1 max 4096");
-                println!("option name Threads type spin default 1 min 1 max 1");
 
                 // Aspiration
                 println!(
@@ -108,11 +106,11 @@ impl UCIEngine {
                 // LMR
                 println!(
                     "option name LMRDiv type spin default {} min 130 max 240",
-                    self.data.params.lmr_div
+                    (self.data.params.lmr_div * 100.0) as u64
                 );
                 println!(
                     "option name LMRBase type spin default {} min 50 max 150",
-                    self.data.params.lmr_base
+                    (self.data.params.lmr_base * 100.0) as u64
                 );
 
                 // Razoring
