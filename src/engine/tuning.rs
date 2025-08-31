@@ -18,6 +18,9 @@ pub struct Params {
     pub history_max_bonus: i16,
     pub history_factor: i16,
     pub history_offset: i16,
+    pub see_depth: u8,
+    pub see_f_margin: i32,
+    pub see_s_margin: i32,
 }
 
 impl Params {
@@ -46,6 +49,10 @@ impl Params {
             history_max_bonus: 1700,
             history_factor: 353,
             history_offset: 343,
+
+            see_depth: 10,
+            see_f_margin: -250,
+            see_s_margin: -75,
         }
     }
 }

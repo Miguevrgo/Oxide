@@ -229,8 +229,8 @@ impl Board {
                     moves.push(Move::new(src, dst, MoveKind::Capture));
                     caps = caps.pop_bit(dst);
                 }
-                knight_bb = knight_bb.pop_bit(src);
             }
+            knight_bb = knight_bb.pop_bit(src);
         }
     }
 

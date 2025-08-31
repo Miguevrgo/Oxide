@@ -146,6 +146,19 @@ impl UCIEngine {
                     "option name HistoryOffset type spin default {} min 100 max 400 ",
                     self.data.params.history_offset
                 );
+
+                println!(
+                    "option name SeeDepth type spin default {} min 2 max 14",
+                    self.data.params.see_depth
+                );
+                println!(
+                    "option name SeeFirstMargin type spin default {} min -500 max -150",
+                    self.data.params.see_f_margin
+                );
+                println!(
+                    "option name SeeSecondMargin type spin default {} min -150 max -35",
+                    self.data.params.see_s_margin
+                );
                 println!("uciok");
             }
             "ucinewgame" => {
@@ -286,6 +299,22 @@ impl UCIEngine {
                         "HistoryOffset" if parts[3] == "value" => {
                             if let Ok(v) = parts[4].parse() {
                                 self.data.params.history_offset = v;
+                            }
+                        }
+                        // See Pruning
+                        "SeeDepth" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.see_depth = v;
+                            }
+                        }
+                        "SeeFirstMargin" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.see_f_margin = v;
+                            }
+                        }
+                        "SeeSecondMargin" if parts[3] == "value" => {
+                            if let Ok(v) = parts[4].parse() {
+                                self.data.params.see_s_margin = v;
                             }
                         }
                         _ => {}

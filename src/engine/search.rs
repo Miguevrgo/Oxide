@@ -227,6 +227,15 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             if depth <= data.params.hp_depth && ms < data.params.hp_threshold {
                 break;
             }
+
+            let margin = if m.get_type().is_capture() {
+                data.params.see_f_margin
+            } else {
+                data.params.see_s_margin
+            } * depth as i32;
+            if depth <= data.params.see_depth && !board.see(m, margin) {
+                break;
+            }
         }
 
         if !board.is_legal(m) {
