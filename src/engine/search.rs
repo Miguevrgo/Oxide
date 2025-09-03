@@ -228,13 +228,14 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                 break;
             }
 
+            // Static exchange pruning
             let margin = if m.get_type().is_capture() {
                 data.params.see_f_margin
             } else {
                 data.params.see_s_margin
             } * depth as i32;
-            if depth <= data.params.see_depth && !board.see(m, margin) {
-                break;
+            if depth < data.params.see_depth && !board.see(m, margin) {
+                continue;
             }
         }
 

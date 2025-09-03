@@ -119,7 +119,7 @@ impl UCIEngine {
                     self.data.params.razor_depth
                 );
                 println!(
-                    "option name RazorMargin type spin default {} min 0 max 600",
+                    "option name RazorMargin type spin default {} min 100 max 600",
                     self.data.params.razor_margin
                 );
 
@@ -135,15 +135,15 @@ impl UCIEngine {
 
                 // History Heuristic
                 println!(
-                    "option name HistoryMaxBonus type spin default {} min 1200 max 1800",
+                    "option name HistoryMaxBonus type spin default {} min 1300 max 1850",
                     self.data.params.history_max_bonus
                 );
                 println!(
-                    "option name HistoryFactor type spin default {} min 100 max 400",
+                    "option name HistoryFactor type spin default {} min 200 max 400",
                     self.data.params.history_factor
                 );
                 println!(
-                    "option name HistoryOffset type spin default {} min 100 max 400 ",
+                    "option name HistoryOffset type spin default {} min 200 max 400 ",
                     self.data.params.history_offset
                 );
 
@@ -152,11 +152,11 @@ impl UCIEngine {
                     self.data.params.see_depth
                 );
                 println!(
-                    "option name SeeFirstMargin type spin default {} min -500 max -150",
+                    "option name SeeFirstMargin type spin default {} min -350 max -150",
                     self.data.params.see_f_margin
                 );
                 println!(
-                    "option name SeeSecondMargin type spin default {} min -150 max -35",
+                    "option name SeeSecondMargin type spin default {} min -200 max -55",
                     self.data.params.see_s_margin
                 );
                 println!("uciok");

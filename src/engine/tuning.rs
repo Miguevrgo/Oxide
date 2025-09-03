@@ -50,9 +50,9 @@ impl Params {
             history_factor: 353,
             history_offset: 343,
 
-            see_depth: 10,
-            see_f_margin: -250,
-            see_s_margin: -75,
+            see_depth: 2,
+            see_f_margin: -280,
+            see_s_margin: -180,
         }
     }
 }
