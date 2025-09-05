@@ -24,8 +24,8 @@ const NMP_DIVISOR: u8 = 5;
 const RFP_DEPTH: u8 = 8;
 const RFP_IMPROVING: i32 = 35;
 const RFP_MARGIN: i32 = 75;
-const LMR_DIV: f64 = 1.8;
-const LMR_BASE: f64 = 0.88;
+pub const LMR_DIV: f64 = 1.8;
+pub const LMR_BASE: f64 = 0.88;
 
 const RAZOR_DEPTH: u8 = 4;
 const RAZOR_MARGIN: i32 = 450;
@@ -234,7 +234,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut best_score = -INF;
     let mut move_idx = 0;
     let lmr_ready = depth > 1 && !in_check;
-    let lmr_depth = (depth as f64).ln() / (LMR_DIV);
     let mut quiets_tried = Vec::with_capacity(16);
     let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
@@ -262,7 +261,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
         // Late Move Reduction
         if lmr_ready && ms < KILL_SCORE {
-            reduction = (LMR_BASE + lmr_depth * (move_idx as f64).ln()) as i16;
+            reduction = data.lmr_table.base[depth as usize][move_idx];
             reduction -= i16::from(pv_node);
             reduction -= i16::from(new_in_check);
             if ms <= MAX_HISTORY {
