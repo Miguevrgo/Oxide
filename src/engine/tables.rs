@@ -1,5 +1,6 @@
 use crate::engine::search::{
-    HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, MATE, MAX_DEPTH, MAX_HISTORY,
+    HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, LMR_BASE, LMR_DIV, MATE, MAX_DEPTH,
+    MAX_HISTORY,
 };
 use crate::game::board::Board;
 use crate::game::moves::{Move, MoveList};
@@ -200,6 +201,34 @@ impl Default for CaptureHistoryTable {
     }
 }
 
+pub struct LmrTable {
+    pub base: [[i16; MoveList::SIZE + 1]; MAX_DEPTH as usize + 1],
+}
+
+impl LmrTable {
+    pub fn new() -> Self {
+        let mut temp = Self {
+            base: [[0; MoveList::SIZE + 1]; (MAX_DEPTH + 1) as usize],
+        };
+        temp.init();
+        temp
+    }
+
+    fn init(&mut self) {
+        for depth in 0..=MAX_DEPTH {
+            for move_idx in 0..=MoveList::SIZE {
+                let reduction =
+                    (LMR_BASE + (depth as f64).ln() / (LMR_DIV) * (move_idx as f64).ln()) as i16;
+                self.base[depth as usize][move_idx] = reduction;
+            }
+        }
+
+        self.base[0][0] = 0;
+        self.base[1][0] = 0;
+        self.base[0][1] = 0;
+    }
+}
+
 pub const MAX_PLY: usize = 128;
 
 #[derive(Clone, Copy, Default)]
@@ -229,6 +258,7 @@ pub struct SearchData {
     pub cache: EvalTable,
     pub history: HistoryTable,
     pub cap_history: CaptureHistoryTable,
+    pub lmr_table: LmrTable,
 }
 
 impl SearchData {
@@ -250,6 +280,7 @@ impl SearchData {
             cache: EvalTable::default(),
             history: HistoryTable::default(),
             cap_history: CaptureHistoryTable::default(),
+            lmr_table: LmrTable::new(),
         }
     }
 
