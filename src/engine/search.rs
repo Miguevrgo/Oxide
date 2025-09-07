@@ -29,6 +29,7 @@ pub const LMR_BASE: f64 = 0.88;
 
 const RAZOR_DEPTH: u8 = 4;
 const RAZOR_MARGIN: i32 = 450;
+const HP_DEPTH: u8 = 2;
 const HP_THRESHOLD: i32 = -3550;
 
 pub const HISTORY_MAX_BONUS: i16 = 1700;
@@ -241,7 +242,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
             // History pruning
-            if depth <= 2 && ms < HP_THRESHOLD {
+            if depth <= HP_DEPTH && ms < HP_THRESHOLD {
                 break;
             }
         }
