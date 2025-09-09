@@ -341,7 +341,7 @@ impl Default for MoveList {
 
 impl MoveList {
     // Pointer width 64
-    const SIZE: usize = 252;
+    pub const SIZE: usize = 252;
 
     pub fn as_slice(&self) -> &[Move] {
         &self.moves[..self.len]

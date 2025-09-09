@@ -9,8 +9,8 @@ pub struct Params {
     pub rfp_depth: u8,
     pub rfp_improving: i32,
     pub rfp_margin: i32,
-    pub lmr_div: f64,
-    pub lmr_base: f64,
+    pub lmr_div: f64,  //NOTE: Refactor
+    pub lmr_base: f64, //NOTE: Refactor
     pub razor_depth: u8,
     pub razor_margin: i32,
     pub hp_threshold: i32,

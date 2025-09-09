@@ -8,6 +8,9 @@ use std::time::Instant;
 use super::network::EvalTable;
 use super::search::MAX_CAP_HISTORY;
 
+pub const LMR_DIV: f64 = 1.8;
+pub const LMR_BASE: f64 = 0.88;
+
 /// Transposition Table
 #[derive(Copy, Clone, PartialEq)]
 pub enum Bound {
@@ -199,6 +202,36 @@ impl Default for CaptureHistoryTable {
     }
 }
 
+pub struct LmrTable {
+    pub base: [[i16; MoveList::SIZE + 1]; MAX_DEPTH as usize + 1],
+}
+
+impl LmrTable {
+    pub fn new() -> Self {
+        let log_depth: Vec<f64> = (0..=MAX_DEPTH)
+            .map(|d| if d > 0 { (d as f64).ln() } else { 0.0 })
+            .collect();
+
+        let log_move: Vec<f64> = (0..=MoveList::SIZE)
+            .map(|m| if m > 0 { (m as f64).ln() } else { 0.0 })
+            .collect();
+
+        let mut table = [[0i16; MoveList::SIZE + 1]; (MAX_DEPTH + 1) as usize];
+
+        for (d, &ld) in log_depth.iter().enumerate() {
+            for (m, &lm) in log_move.iter().enumerate() {
+                table[d][m] = (LMR_BASE + ld / LMR_DIV * lm) as i16;
+            }
+        }
+
+        table[0][0] = 0;
+        table[1][0] = 0;
+        table[0][1] = 0;
+
+        Self { base: table }
+    }
+}
+
 pub const MAX_PLY: usize = 128;
 
 #[derive(Clone, Copy, Default)]
@@ -228,7 +261,7 @@ pub struct SearchData {
     pub cache: EvalTable,
     pub history: HistoryTable,
     pub cap_history: CaptureHistoryTable,
-
+    pub lmr_table: LmrTable,
     // Tuning
     pub params: Params,
 }
@@ -252,8 +285,8 @@ impl SearchData {
             cache: EvalTable::default(),
             history: HistoryTable::default(),
             cap_history: CaptureHistoryTable::default(),
-
             params: Params::new(),
+            lmr_table: LmrTable::new(),
         }
     }
 

@@ -216,7 +216,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut best_score = -INF;
     let mut move_idx = 0;
     let lmr_ready = depth > 1 && !in_check;
-    let lmr_depth = (depth as f64).ln() / (data.params.lmr_div);
     let mut quiets_tried = Vec::with_capacity(16);
     let mut caps_tried = Vec::with_capacity(16);
     data.push(key);
@@ -254,7 +253,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
         // Late Move Reduction
         if lmr_ready && ms < KILL_SCORE {
-            reduction = (data.params.lmr_base + lmr_depth * (move_idx as f64).ln()) as i16;
+            reduction = data.lmr_table.base[depth as usize][move_idx];
             reduction -= i16::from(pv_node);
             reduction -= i16::from(new_in_check);
             if ms <= MAX_HISTORY {
