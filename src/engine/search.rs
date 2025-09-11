@@ -143,6 +143,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
             break;
         }
     }
+
     data.ply -= 1;
 
     if best_eval > alpha {
