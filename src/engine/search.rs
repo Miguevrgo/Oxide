@@ -224,7 +224,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     // Internal Iterative Reduction
-    if depth >= 4 && tt_move.is_none() {
+    if depth >= 2 + 2 * pv_node as u8 && tt_move.is_none() {
         depth -= 1;
     }
 
