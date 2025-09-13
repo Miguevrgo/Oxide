@@ -23,7 +23,7 @@ pub struct Board {
     pub side: Colour,
     pub castling_rights: CastlingRights,
     pub en_passant: Option<Square>,
-    pub halfmoves: u8,
+    pub halfmoves: u16,
     pub hash: ZHash,
     pub checkers: BitBoard,
     pub threats: BitBoard,
@@ -746,7 +746,7 @@ impl Board {
             _ => Some(Square::from(fen[3])),
         };
 
-        board.halfmoves = fen[4].parse::<u8>().unwrap();
+        board.halfmoves = fen[4].parse::<u16>().unwrap();
         board.hash = ZHash::new(&board);
         board.calculate_threats();
         board.pinned_and_checkers();
