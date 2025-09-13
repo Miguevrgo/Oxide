@@ -224,7 +224,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     // Internal Iterative Reduction
-    if depth >= 4 && tt_move.is_none() {
+    if depth >= 2 && tt_move.is_none() {
         depth -= 1;
     }
 
@@ -236,8 +236,8 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     let mut best_move = Move::NULL;
     let mut best_score = -INF;
     let mut move_idx = 0;
-    let mut quiets_tried = Vec::with_capacity(16);
-    let mut caps_tried = Vec::with_capacity(16);
+    let mut quiets_tried = Vec::with_capacity(32);
+    let mut caps_tried = Vec::with_capacity(32);
     data.push(key);
 
     while let Some((m, ms)) = picker.next() {
