@@ -13,6 +13,27 @@ pub const PROM_SCORE: i32 = 80_000;
 pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
+// Search Parameters
+pub const ASPIRATION_DELTA: i32 = 45;
+pub const ASPIRATION_DELTA_LIMIT: i32 = 500;
+
+pub const NMP_MIN_DEPTH: u8 = 2;
+pub const NMP_BASE_REDUCTION: u8 = 6;
+pub const NMP_DIVISOR: u8 = 5;
+
+pub const RFP_DEPTH: u8 = 8;
+pub const RFP_IMPROVING: i32 = 35;
+pub const RFP_MARGIN: i32 = 75;
+
+pub const RAZOR_DEPTH: u8 = 4;
+pub const RAZOR_MARGIN: i32 = 450;
+pub const HP_DEPTH: u8 = 2;
+pub const HP_THRESHOLD: i32 = -3550;
+pub const IIR_DEPTH: u8 = 2;
+
+pub const HISTORY_MAX_BONUS: i16 = 1700;
+pub const HISTORY_FACTOR: i16 = 353;
+pub const HISTORY_OFFSET: i16 = 343;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
@@ -64,7 +85,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
             return score;
         }
 
-        delta += data.params.aspiration_mult * delta / data.params.aspiration_div;
+        delta += delta / 2;
         if delta > data.params.aspiration_delta_limit {
             alpha = -INF;
             beta = INF;
@@ -205,7 +226,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     // Internal Iterative Reduction
-    if depth >= 2 && tt_move.is_none() {
+    if depth >= data.params.iir_depth && tt_move.is_none() {
         depth -= 1;
     }
 
@@ -226,16 +247,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             // History pruning
             if depth <= data.params.hp_depth && ms < data.params.hp_threshold {
                 break;
-            }
-
-            // Static exchange pruning
-            let margin = if m.get_type().is_capture() {
-                data.params.see_f_margin
-            } else {
-                data.params.see_s_margin
-            } * depth as i32;
-            if depth < data.params.see_depth && !board.see(m, margin) {
-                continue;
             }
         }
 
