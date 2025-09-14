@@ -125,6 +125,13 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         if !board.is_legal(m) {
             continue;
         }
+        if best_eval > -MATE
+            && m.get_type().is_capture()
+            && !board.in_check()
+            && !board.see(m, -100)
+        {
+            break;
+        }
         let mut new_board = *board;
         new_board.make_move(m);
 
