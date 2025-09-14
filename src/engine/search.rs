@@ -121,6 +121,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
             break;
         }
     }
+
     data.ply -= 1;
 
     if best_eval > alpha {
@@ -204,7 +205,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     // Internal Iterative Reduction
-    if depth >= 4 && tt_move.is_none() {
+    if depth >= 2 && tt_move.is_none() {
         depth -= 1;
     }
 
@@ -212,12 +213,12 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     picker.score_moves(board, tt_move, data);
 
     let old_alpha = alpha;
+    let lmr_ready = depth > 1 && !in_check;
     let mut best_move = Move::NULL;
     let mut best_score = -INF;
     let mut move_idx = 0;
-    let lmr_ready = depth > 1 && !in_check;
-    let mut quiets_tried = Vec::with_capacity(16);
-    let mut caps_tried = Vec::with_capacity(16);
+    let mut quiets_tried = Vec::with_capacity(32);
+    let mut caps_tried = Vec::with_capacity(32);
     data.push(key);
 
     while let Some((m, ms)) = picker.next() {
@@ -248,16 +249,15 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         move_idx += 1;
         data.nodes += 1;
 
-        let new_in_check = new_board.in_check();
         let mut reduction = 0;
 
         // Late Move Reduction
         if lmr_ready && ms < KILL_SCORE {
             reduction = data.lmr_table.base[depth as usize][move_idx];
             reduction -= i16::from(pv_node);
-            reduction -= i16::from(new_in_check);
+            reduction -= i16::from(new_board.in_check());
             if ms <= MAX_HISTORY {
-                reduction -= ms as i16 / 8192;
+                reduction -= (ms / MAX_HISTORY) as i16;
             }
             reduction = reduction.clamp(0, depth as i16 - 1);
         }
@@ -280,6 +280,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         };
 
         if score > best_score {
+            alpha = alpha.max(score);
             best_score = score;
             best_move = m;
             if pv_node {
@@ -289,8 +290,6 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             }
         }
 
-        alpha = alpha.max(score);
-
         if alpha >= beta {
             let history_bonus = history_bonus(
                 depth,
@@ -299,9 +298,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
                 data.params.history_offset,
             );
             if !m.get_type().is_capture() {
-                if m != data.ply_data[data.ply].killer {
-                    data.ply_data[data.ply].killer = m;
-                }
+                data.ply_data[data.ply].killer = m;
 
                 data.history.update(
                     board.side,
