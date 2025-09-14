@@ -3,6 +3,7 @@ use crate::engine::search::*;
 pub struct Params {
     pub aspiration_delta: i32,
     pub aspiration_delta_limit: i32,
+    pub qs_see: i32,
     pub nmp_min_depth: u8,
     pub nmp_base_reduction: u8,
     pub nmp_divisor: u8,
@@ -24,6 +25,7 @@ impl Params {
         Self {
             aspiration_delta: ASPIRATION_DELTA,
             aspiration_delta_limit: ASPIRATION_DELTA_LIMIT,
+            qs_see: QS_SEE,
 
             nmp_min_depth: NMP_MIN_DEPTH,
             nmp_base_reduction: NMP_BASE_REDUCTION,

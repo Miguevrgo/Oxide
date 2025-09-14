@@ -74,22 +74,26 @@ impl UCIEngine {
                 self.go(&parts[1..]);
             }
             "setoption" => {
-                if parts.len() >= 5 && parts[1] == "name" {
+                if parts.len() >= 5 && parts[1] == "name" && parts[3] == "value" {
+                    let value = parts[4].parse::<i32>().unwrap_or(0);
                     match parts[2] {
-                        "Hash" if parts[3] == "value" => {
-                            if let Ok(mb) = parts[4].parse() {
-                                if mb > 0 {
-                                    self.data.resize_tt(mb);
-                                }
-                            }
-                        }
-                        "Threads" if parts[3] == "value" => {
-                            if let Ok(n) = parts[4].parse::<u8>() {
-                                if n != 1 {
-                                    println!("Only one thread supported!")
-                                }
-                            }
-                        }
+                        "aspiration_delta" => self.data.params.aspiration_delta = value,
+                        "aspiration_delta_limit" => self.data.params.aspiration_delta_limit = value,
+                        "qs_see" => self.data.params.qs_see = value,
+                        "nmp_min_depth" => self.data.params.nmp_min_depth = value as u8,
+                        "nmp_base_reduction" => self.data.params.nmp_base_reduction = value as u8,
+                        "nmp_divisor" => self.data.params.nmp_divisor = value as u8,
+                        "rfp_depth" => self.data.params.rfp_depth = value as u8,
+                        "rfp_improving" => self.data.params.rfp_improving = value,
+                        "rfp_margin" => self.data.params.rfp_margin = value,
+                        "razor_depth" => self.data.params.razor_depth = value as u8,
+                        "razor_margin" => self.data.params.razor_margin = value,
+                        "hp_depth" => self.data.params.hp_depth = value as u8,
+                        "hp_threshold" => self.data.params.hp_threshold = value,
+                        "history_max_bonus" => self.data.params.history_max_bonus = value as i16,
+                        "history_factor" => self.data.params.history_factor = value as i16,
+                        "history_offset" => self.data.params.history_offset = value as i16,
+                        "iir_depth" => self.data.params.iir_depth = value as u8,
                         _ => {}
                     }
                 }

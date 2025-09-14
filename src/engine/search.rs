@@ -130,7 +130,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         if best_eval > -MATE
             && m.get_type().is_capture()
             && !board.in_check()
-            && !board.see(m, QS_SEE)
+            && !board.see(m, data.params.qs_see)
         {
             break;
         }
