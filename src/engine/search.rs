@@ -16,6 +16,7 @@ pub const KILL_SCORE: i32 = 70_000;
 // Search Parameters
 const ASPIRATION_DELTA: i32 = 45;
 const ASPIRATION_DELTA_LIMIT: i32 = 500;
+const QS_SEE: i32 = -100;
 
 const NMP_MIN_DEPTH: u8 = 2;
 const NMP_BASE_REDUCTION: u8 = 6;
@@ -125,13 +126,16 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         if !board.is_legal(m) {
             continue;
         }
+
+        // Quiescence SEE pruning
         if best_eval > -MATE
             && m.get_type().is_capture()
             && !board.in_check()
-            && !board.see(m, -100)
+            && !board.see(m, QS_SEE)
         {
             break;
         }
+
         let mut new_board = *board;
         new_board.make_move(m);
 
