@@ -391,8 +391,11 @@ impl Board {
             return false;
         }
 
+        if self.checkers == BitBoard::EMPTY {
+            return true;
+        }
+
         match self.checkers.count_bits() {
-            0 => true, // No checks
             1 => {
                 // If the move is going to solve the only check
                 let checker = self.checkers.lsb();
