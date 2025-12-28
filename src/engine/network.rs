@@ -148,6 +148,7 @@ impl Default for EvalTable {
     }
 }
 
+#[cfg(not(target_feature = "avx512vnni"))]
 #[inline]
 pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const CHUNK: usize = 16;
@@ -168,11 +169,13 @@ pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     horizontal_sum_i32(sum)
 }
 
+#[cfg(not(target_feature = "avx512vnni"))]
 #[inline]
 unsafe fn load_i16s(acc: &Accumulator, start_idx: usize) -> __m256i {
     _mm256_load_si256(acc.vals.as_ptr().add(start_idx).cast())
 }
 
+#[cfg(not(target_feature = "avx512vnni"))]
 #[inline]
 unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let upper_128 = _mm256_extracti128_si256::<1>(sum);
@@ -184,4 +187,31 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
     let sum_32 = _mm_add_epi32(upper_32, sum_64);
 
     _mm_cvtsi128_si32(sum_32)
+}
+
+#[cfg(target_feature = "avx512vnni")]
+#[inline]
+pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
+    const CHUNK: usize = 32;
+    const NUM_ITERS: usize = HL_SIZE / CHUNK;
+
+    let mut sum = _mm512_setzero_si512();
+    let min = _mm512_setzero_si512();
+    let max = _mm512_set1_epi16(QA as i16);
+
+    for i in 0..NUM_ITERS {
+        let mut v = load_i16s(acc, i * CHUNK);
+        v = _mm512_min_epi16(_mm512_max_epi16(v, min), max);
+        let w = load_i16s(weights, i * CHUNK);
+        let product = _mm512_mullo_epi16(v, w);
+        sum = _mm512_dpwssd_epi32(sum, v, product);
+    }
+
+    _mm512_reduce_add_epi32(sum)
+}
+
+#[cfg(target_feature = "avx512vnni")]
+#[inline]
+unsafe fn load_i16s(acc: &Accumulator, start_idx: usize) -> __m512i {
+    _mm512_load_si512(acc.vals.as_ptr().add(start_idx).cast())
 }
