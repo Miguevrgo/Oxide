@@ -78,6 +78,7 @@ pub struct Accumulator {
 }
 
 impl Accumulator {
+    #[cfg(not(target_feature = "avx512f"))]
     #[inline]
     pub fn update_multi(&mut self, adds: &[u16], subs: &[u16]) {
         const REGS: usize = 8;
@@ -111,6 +112,45 @@ impl Accumulator {
 
                 for (j, reg) in regs.iter().enumerate() {
                     _mm256_store_si256(self.vals.as_mut_ptr().add(offset + j * 16).cast(), *reg);
+                }
+            }
+        }
+    }
+
+    #[cfg(target_feature = "avx512f")]
+    #[inline]
+    pub fn update_multi(&mut self, adds: &[u16], subs: &[u16]) {
+        const REGS: usize = 8;
+        const PER: usize = 256;
+        const ITERATIONS: usize = HL_SIZE / PER;
+
+        unsafe {
+            for i in 0..ITERATIONS {
+                let offset = i * PER;
+                let mut regs = [_mm512_setzero_si512(); REGS];
+
+                for (j, reg) in regs.iter_mut().enumerate() {
+                    *reg = _mm512_load_si512(self.vals.as_ptr().add(offset + j * 32).cast());
+                }
+
+                for &add in adds {
+                    let weights = NNUE.feature_weights[add as usize].vals.as_ptr().add(offset);
+                    for (j, reg) in regs.iter_mut().enumerate() {
+                        let w = _mm512_load_si512(weights.add(j * 32).cast());
+                        *reg = _mm512_add_epi16(*reg, w);
+                    }
+                }
+
+                for &sub in subs {
+                    let weights = NNUE.feature_weights[sub as usize].vals.as_ptr().add(offset);
+                    for (j, reg) in regs.iter_mut().enumerate() {
+                        let w = _mm512_load_si512(weights.add(j * 32).cast());
+                        *reg = _mm512_sub_epi16(*reg, w);
+                    }
+                }
+
+                for (j, reg) in regs.iter().enumerate() {
+                    _mm512_store_si512(self.vals.as_mut_ptr().add(offset + j * 32).cast(), *reg);
                 }
             }
         }
