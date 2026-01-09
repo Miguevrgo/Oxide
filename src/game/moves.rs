@@ -427,12 +427,11 @@ impl MovePicker {
         }
 
         let mut best_idx = 0;
-        let mut best_score = i32::MIN;
+        let mut best_score = self.scores[0];
 
-        for i in 0..self.moves.len {
-            let score = self.scores[i];
-            if score > best_score {
-                best_score = score;
+        for i in 1..self.moves.len {
+            if self.scores[i] > best_score {
+                best_score = self.scores[i];
                 best_idx = i;
             }
         }
