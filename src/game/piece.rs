@@ -13,7 +13,7 @@
 /// assert!(white_pawn.is_pawn());
 /// ```
 #[repr(u8)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum Piece {
     WP = 0,      // White Pawn
     BP = 1,      // Black Pawn
@@ -127,21 +127,6 @@ impl Piece {
 
     pub const fn is_king(self) -> bool {
         self as u8 & 0b1110 == 0b1010
-    }
-}
-
-impl std::fmt::Display for Piece {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let symbol = match self {
-            Piece::WP | Piece::BP => '♟',
-            Piece::WN | Piece::BN => '♞',
-            Piece::WB | Piece::BB => '♝',
-            Piece::WR | Piece::BR => '♜',
-            Piece::WQ | Piece::BQ => '♛',
-            Piece::WK | Piece::BK => '♚',
-            _ => ' ',
-        };
-        write!(f, "{symbol}")
     }
 }
 

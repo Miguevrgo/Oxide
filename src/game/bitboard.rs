@@ -7,7 +7,7 @@ use super::piece::Colour;
 ///
 /// This struct is designed for efficient manipulation of chess positions using
 /// bitwise operations, designed so that the LSB correponds to A1 and MSB to H8
-#[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Debug, Default, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Clone, Copy, Default, Hash)]
 pub struct BitBoard(pub u64);
 
 impl std::ops::BitAnd for BitBoard {
@@ -28,20 +28,6 @@ impl std::ops::BitXor for BitBoard {
     type Output = Self;
     fn bitxor(self, rhs: Self) -> Self {
         BitBoard(self.0 ^ rhs.0)
-    }
-}
-
-impl std::ops::Shl<u8> for BitBoard {
-    type Output = Self;
-    fn shl(self, rhs: u8) -> Self {
-        BitBoard(self.0 << rhs)
-    }
-}
-
-impl std::ops::Shr<u8> for BitBoard {
-    type Output = Self;
-    fn shr(self, rhs: u8) -> Self {
-        BitBoard(self.0 >> rhs)
     }
 }
 
@@ -165,22 +151,5 @@ impl BitBoard {
     /// https://github.com/rust-lang/rfcs/pull/3762
     pub const fn contains(self, sq: Square) -> bool {
         self.and(sq.to_board()).0 != 0
-    }
-}
-
-impl std::fmt::Display for BitBoard {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "  a b c d e f g h")?;
-        writeln!(f, " ┌────────────────┐")?;
-        for rank in (0..8).rev() {
-            write!(f, "{}│", rank + 1)?;
-            for file in 0..8 {
-                let index = rank * 8 + file;
-                let bit = (self.0 >> index) & 1;
-                write!(f, "{} ", if bit == 1 { "1" } else { "0" })?;
-            }
-            writeln!(f, "│")?;
-        }
-        writeln!(f, " └────────────────┘")
     }
 }

@@ -80,11 +80,12 @@ impl Square {
     /// Returns `None` if the resulting position is off the board.
     /// With LSB = a1, positive `file_delta` moves up (e.g., a2 to a3),
     /// and positive `rank_delta` moves right (e.g., a2 to b2).
+    /// Only < 8 is checked as converting i8 negative numbers results in >8
     pub fn jump_check(self, rank_delta: i8, file_delta: i8) -> Option<Self> {
-        let file = (self.0 % 8) as i8 + rank_delta;
-        let rank = (self.0 / 8) as i8 + file_delta;
-        if (0..8).contains(&file) && (0..8).contains(&rank) {
-            Some(Self((rank * 8 + file) as u8))
+        let file = ((self.0 % 8) as i8 + rank_delta) as u8;
+        let rank = ((self.0 / 8) as i8 + file_delta) as u8;
+        if (file | rank) < 8 {
+            Some(Self(rank * 8 + file))
         } else {
             None
         }

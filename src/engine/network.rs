@@ -171,7 +171,7 @@ pub struct EvalEntry {
 }
 
 pub struct EvalTable {
-    pub table: [[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS],
+    pub table: Box<[[EvalEntry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]>,
 }
 
 impl Default for EvalTable {
@@ -183,7 +183,7 @@ impl Default for EvalTable {
             black: bias,
         };
         Self {
-            table: [[entry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS],
+            table: Box::new([[entry; 2 * NUM_BUCKETS]; 2 * NUM_BUCKETS]),
         }
     }
 }
