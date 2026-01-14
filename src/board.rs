@@ -1,6 +1,6 @@
-use crate::engine::network::{EvalTable, Network};
-use crate::game::constants::queen_attacks;
-use crate::game::{
+use crate::constants::queen_attacks;
+use crate::network::{EvalTable, Network};
+use crate::{
     bitboard::BitBoard,
     castle::CastlingRights,
     constants::{bishop_attacks, rook_attacks, KING_ATTACKS, KNIGHT_ATTACKS, PIECE_VALUES},

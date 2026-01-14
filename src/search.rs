@@ -1,6 +1,6 @@
-use crate::engine::tables::{history_bonus, Bound, SearchData};
-use crate::game::moves::MovePicker;
-use crate::game::{board::Board, moves::Move};
+use crate::moves::MovePicker;
+use crate::tables::{history_bonus, Bound, SearchData};
+use crate::{board::Board, moves::Move};
 
 pub const INF: i32 = 2 << 16;
 pub const MATE: i32 = INF >> 2;

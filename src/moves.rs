@@ -1,9 +1,7 @@
 use crate::{
-    engine::{
-        search::{CAP_SCORE, KILL_SCORE, PROM_SCORE, TT_SCORE},
-        tables::SearchData,
-    },
-    game::square::Square,
+    search::{CAP_SCORE, KILL_SCORE, PROM_SCORE, TT_SCORE},
+    square::Square,
+    tables::SearchData,
 };
 use std::hint::unreachable_unchecked;
 

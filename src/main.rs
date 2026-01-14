@@ -1,7 +1,18 @@
-use game::uci::UCIEngine;
+use uci::UCIEngine;
 
-mod engine;
-mod game;
+mod bitboard;
+mod board;
+mod castle;
+mod constants;
+mod moves;
+mod network;
+mod perft;
+mod piece;
+mod search;
+mod square;
+mod tables;
+mod uci;
+mod zobrist;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -1,10 +1,10 @@
-use crate::engine::search::{
+use crate::board::Board;
+use crate::moves::{Move, MoveList};
+use crate::piece::Colour;
+use crate::search::{
     HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, LMR_BASE, LMR_DIV, MATE, MAX_DEPTH,
     MAX_HISTORY,
 };
-use crate::game::board::Board;
-use crate::game::moves::{Move, MoveList};
-use crate::game::piece::Colour;
 use std::time::Instant;
 
 use super::network::EvalTable;

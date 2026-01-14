@@ -1,4 +1,4 @@
-use crate::game::bitboard::BitBoard;
+use crate::bitboard::BitBoard;
 
 use super::piece::Colour;
 

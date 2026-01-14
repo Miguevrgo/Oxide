@@ -1,4 +1,4 @@
-use crate::game::board::Board;
+use crate::board::Board;
 use std::time::Instant;
 
 impl Board {

@@ -1,6 +1,5 @@
-use crate::game::square::Square;
-
 use super::piece::Colour;
+use crate::square::Square;
 
 /// A 64-bit representation of a chess board, where each bit corresponds to a square.
 /// A `1` indicates the presence of a piece, and a `0` indicates an empty square.

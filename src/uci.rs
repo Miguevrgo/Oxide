@@ -1,7 +1,7 @@
-use crate::engine::network::EvalTable;
-use crate::engine::search::{find_best_move, MAX_DEPTH};
-use crate::engine::tables::SearchData;
-use crate::game::piece::Colour;
+use crate::network::EvalTable;
+use crate::piece::Colour;
+use crate::search::{find_best_move, MAX_DEPTH};
+use crate::tables::SearchData;
 use std::env;
 use std::io::BufRead;
 
