@@ -191,35 +191,31 @@ impl Board {
         // Pawn attacks
         let mut pawns = self.pieces[Piece::WP.index()] & self.sides[attacker];
         while pawns != BitBoard::EMPTY {
-            let sq = pawns.lsb();
+            let sq = pawns.pop_lsb();
             self.threats |= PAWN_ATTACKS[attacker][sq.index()];
-            pawns = pawns.pop_bit(sq);
         }
 
         // Rooks and queens (Orthogonal)
         let mut rooks = (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()])
             & self.sides[attacker];
         while rooks != BitBoard::EMPTY {
-            let sq = rooks.lsb();
+            let sq = rooks.pop_lsb();
             self.threats |= rook_attacks(occ.0, sq.index());
-            rooks = rooks.pop_bit(sq);
         }
 
         // Bishops and queens (diagonals)
         let mut bishops = (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])
             & self.sides[attacker];
         while bishops != BitBoard::EMPTY {
-            let sq = bishops.lsb();
+            let sq = bishops.pop_lsb();
             self.threats |= bishop_attacks(occ.0, sq.index());
-            bishops = bishops.pop_bit(sq);
         }
 
         // Knight attacks (jumpers)
         let mut knights = self.pieces[Piece::WN.index()] & self.sides[attacker];
         while knights != BitBoard::EMPTY {
-            let sq = knights.lsb();
+            let sq = knights.pop_lsb();
             self.threats |= KNIGHT_ATTACKS[sq.index()];
-            knights = knights.pop_bit(sq);
         }
 
         // King attacks
@@ -252,14 +248,13 @@ impl Board {
                 & rook_attacks(BitBoard::EMPTY.0, king_sq.index()));
 
         while sliders_attacks != BitBoard::EMPTY {
-            let sq = sliders_attacks.lsb();
+            let sq = sliders_attacks.pop_lsb();
             let blockers = between(sq, king_sq) & occ;
             if blockers == BitBoard::EMPTY {
                 self.checkers |= sq.to_board();
             } else if blockers.count_bits() == 1 {
                 self.pinned |= blockers & self.sides[self.side as usize];
             }
-            sliders_attacks = sliders_attacks.pop_bit(sq);
         }
     }
 
@@ -336,25 +331,22 @@ impl Board {
         // Bishop moves
         let mut bishop_bb = self.pieces[Piece::WB.index()] & self.sides[side_idx];
         while bishop_bb != BitBoard::EMPTY {
-            let src = bishop_bb.lsb();
+            let src = bishop_bb.pop_lsb();
             self.all_slider_moves::<QUIET, CAP>(src, occ.0, bishop_attacks, &mut moves);
-            bishop_bb = bishop_bb.pop_bit(src);
         }
 
         // Rook moves
         let mut rook_bb = self.pieces[Piece::WR.index()] & self.sides[side_idx];
         while rook_bb != BitBoard::EMPTY {
-            let src = rook_bb.lsb();
+            let src = rook_bb.pop_lsb();
             self.all_slider_moves::<QUIET, CAP>(src, occ.0, rook_attacks, &mut moves);
-            rook_bb = rook_bb.pop_bit(src);
         }
 
         // Queen moves
         let mut queen_bb = self.pieces[Piece::WQ.index()] & self.sides[side_idx];
         while queen_bb != BitBoard::EMPTY {
-            let src = queen_bb.lsb();
+            let src = queen_bb.pop_lsb();
             self.all_slider_moves::<QUIET, CAP>(src, occ.0, queen_attacks, &mut moves);
-            queen_bb = queen_bb.pop_bit(src);
         }
 
         moves
@@ -551,22 +543,20 @@ impl Board {
 
                 let mut add_diff = BitBoard(new_bb & !old_bb);
                 while add_diff != BitBoard::EMPTY {
-                    let sq = add_diff.lsb();
+                    let sq = add_diff.pop_lsb();
                     let sq_idx = sq.index() as u16;
                     add_feats[0][adds] = wbase + (sq_idx ^ wflip);
                     add_feats[1][adds] = bbase + (sq_idx ^ bflip);
                     adds += 1;
-                    add_diff = add_diff.pop_bit(sq);
                 }
 
                 let mut sub_diff = BitBoard(old_bb & !new_bb);
                 while sub_diff != BitBoard::EMPTY {
-                    let sq = sub_diff.lsb();
+                    let sq = sub_diff.pop_lsb();
                     let sq_idx = sq.index() as u16;
                     sub_feats[0][subs] = wbase + (sq_idx ^ wflip);
                     sub_feats[1][subs] = bbase + (sq_idx ^ bflip);
                     subs += 1;
-                    sub_diff = sub_diff.pop_bit(sq);
                 }
             }
         }

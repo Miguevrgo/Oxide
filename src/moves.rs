@@ -151,18 +151,16 @@ impl Board {
         if QUIET {
             let mut quiets = attacks & !BitBoard(occ);
             while quiets != BitBoard::EMPTY {
-                let dst = quiets.lsb();
+                let dst = quiets.pop_lsb();
                 moves.push(Move::new(src, dst, MoveKind::Quiet));
-                quiets = quiets.pop_bit(dst);
             }
         }
 
         if CAP {
             let mut caps = attacks & self.sides[!self.side as usize];
             while caps != BitBoard::EMPTY {
-                let dst = caps.lsb();
+                let dst = caps.pop_lsb();
                 moves.push(Move::new(src, dst, MoveKind::Capture));
-                caps = caps.pop_bit(dst);
             }
         }
     }
@@ -179,9 +177,8 @@ impl Board {
         if QUIET {
             let mut quiets = attacks & !BitBoard(occ);
             while quiets != BitBoard::EMPTY {
-                let dst = quiets.lsb();
+                let dst = quiets.pop_lsb();
                 moves.push(Move::new(src, dst, MoveKind::Quiet));
-                quiets = quiets.pop_bit(dst);
             }
 
             for &dest in &CASTLE[self.side as usize] {
@@ -194,9 +191,8 @@ impl Board {
         if CAP {
             let mut caps = attacks & self.sides[!self.side as usize];
             while caps != BitBoard::EMPTY {
-                let dst = caps.lsb();
+                let dst = caps.pop_lsb();
                 moves.push(Move::new(src, dst, MoveKind::Capture));
-                caps = caps.pop_bit(dst);
             }
         }
     }
@@ -208,27 +204,24 @@ impl Board {
     ) {
         let mut knight_bb = self.pieces[Piece::WN.index()] & self.sides[self.side as usize];
         while knight_bb != BitBoard::EMPTY {
-            let src = knight_bb.lsb();
+            let src = knight_bb.pop_lsb();
             let attacks = KNIGHT_ATTACKS[src.index()];
 
             if QUIET {
                 let mut quiets = attacks & !occ;
                 while quiets != BitBoard::EMPTY {
-                    let dst = quiets.lsb();
+                    let dst = quiets.pop_lsb();
                     moves.push(Move::new(src, dst, MoveKind::Quiet));
-                    quiets = quiets.pop_bit(dst);
                 }
             }
 
             if CAP {
                 let mut caps = attacks & self.sides[!self.side as usize];
                 while caps != BitBoard::EMPTY {
-                    let dst = caps.lsb();
+                    let dst = caps.pop_lsb();
                     moves.push(Move::new(src, dst, MoveKind::Capture));
-                    caps = caps.pop_bit(dst);
                 }
             }
-            knight_bb = knight_bb.pop_bit(src);
         }
     }
 
@@ -254,58 +247,51 @@ impl Board {
 
             // Double pushes
             while double_push != BitBoard::EMPTY {
-                let src = double_push.lsb();
+                let src = double_push.pop_lsb();
                 let dest = src.shift::<16>(colour);
                 moves.push(Move::new(src, dest, MoveKind::DoublePush));
-                double_push = double_push.pop_bit(src);
             }
 
             // Quiet pushes
             while pushes != BitBoard::EMPTY {
-                let src = pushes.lsb();
+                let src = pushes.pop_lsb();
                 let dest = src.shift::<8>(colour);
                 moves.push(Move::new(src, dest, MoveKind::Quiet));
-                pushes = pushes.pop_bit(src);
             }
         }
 
         if CAP {
             while promo != BitBoard::EMPTY {
-                let src = promo.lsb();
+                let src = promo.pop_lsb();
                 let dest = src.shift::<8>(colour);
                 moves.push(Move::new(src, dest, MoveKind::QueenPromotion));
                 moves.push(Move::new(src, dest, MoveKind::RookPromotion));
                 moves.push(Move::new(src, dest, MoveKind::BishopPromotion));
                 moves.push(Move::new(src, dest, MoveKind::KnightPromotion));
-                promo = promo.pop_bit(src);
             }
 
             let mut attackers = pawns & !promo_rank;
             let mut promo = pawns & promo_rank;
 
             while attackers != BitBoard::EMPTY {
-                let src = attackers.lsb();
+                let src = attackers.pop_lsb();
                 let mut attacks = PAWN_ATTACKS[colour as usize][src.index()] & opps;
                 while attacks != BitBoard::EMPTY {
-                    let dest = attacks.lsb();
+                    let dest = attacks.pop_lsb();
                     moves.push(Move::new(src, dest, MoveKind::Capture));
-                    attacks = attacks.pop_bit(dest);
                 }
-                attackers = attackers.pop_bit(src);
             }
 
             while promo != BitBoard::EMPTY {
-                let src = promo.lsb();
+                let src = promo.pop_lsb();
                 let mut attacks = PAWN_ATTACKS[colour as usize][src.index()] & opps;
                 while attacks != BitBoard::EMPTY {
-                    let dest = attacks.lsb();
+                    let dest = attacks.pop_lsb();
                     moves.push(Move::new(src, dest, MoveKind::QueenCapPromo));
                     moves.push(Move::new(src, dest, MoveKind::RookCapPromo));
                     moves.push(Move::new(src, dest, MoveKind::BishopCapPromo));
                     moves.push(Move::new(src, dest, MoveKind::KnightCapPromo));
-                    attacks = attacks.pop_bit(dest);
                 }
-                promo = promo.pop_bit(src);
             }
 
             if let Some(dest) = self.en_passant {

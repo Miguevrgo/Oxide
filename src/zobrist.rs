@@ -18,9 +18,8 @@ impl ZHash {
 
         let mut occ = board.sides[Colour::White as usize] | board.sides[Colour::Black as usize];
         while occ != BitBoard::EMPTY {
-            let sq = occ.lsb();
+            let sq = occ.pop_lsb();
             hash.hash_piece(board.piece_at(sq), sq);
-            occ = occ.pop_bit(sq);
         }
 
         if let Some(square) = board.en_passant {

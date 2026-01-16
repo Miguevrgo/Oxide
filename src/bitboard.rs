@@ -130,6 +130,12 @@ impl BitBoard {
         Square::new(self.0.trailing_zeros() as u8)
     }
 
+    pub fn pop_lsb(&mut self) -> Square {
+        let square = self.lsb();
+        self.0 &= self.0 - 1;
+        square
+    }
+
     /// Returns a bitboard shifted one file to the opposite direction for
     /// a pawn of the given colour
     pub fn shift(self, colour: Colour) -> Self {
