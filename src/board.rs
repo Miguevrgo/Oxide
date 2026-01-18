@@ -301,12 +301,10 @@ impl Board {
         }
         let safe = self.checkers == BitBoard::EMPTY
             && (king_pass.to_board() | king_end.to_board()) & self.threats == BitBoard::EMPTY;
-        safe && self.piece_at(rook_sq)
-            == if self.side == Colour::White {
-                Piece::WR
-            } else {
-                Piece::BR
-            }
+        safe && self.pieces[Piece::WR.index()].0
+            & self.sides[self.side as usize].0
+            & (1 << rook_sq.index())
+            != 0
     }
 
     pub fn generate_pseudo_moves<const QUIET: bool, const CAP: bool>(&self) -> MoveList {
