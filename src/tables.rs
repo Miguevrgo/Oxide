@@ -5,6 +5,7 @@ use crate::search::{
     HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, LMR_BASE, LMR_DIV, MATE, MAX_DEPTH,
     MAX_HISTORY,
 };
+use crate::search_params::SearchParams;
 use std::time::Instant;
 
 use super::network::EvalTable;
@@ -261,6 +262,9 @@ pub struct SearchData {
     pub history: HistoryTable,
     pub cap_history: CaptureHistoryTable,
     pub lmr_table: LmrTable,
+
+    // Tunable Parameters
+    pub params: SearchParams,
 }
 
 impl SearchData {
@@ -283,6 +287,7 @@ impl SearchData {
             history: HistoryTable::default(),
             cap_history: CaptureHistoryTable::default(),
             lmr_table: LmrTable::new(),
+            params: SearchParams::default(),
         }
     }
 

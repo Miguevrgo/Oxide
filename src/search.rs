@@ -13,31 +13,13 @@ pub const PROM_SCORE: i32 = 80_000;
 pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
-// Search Parameters
-const ASPIRATION_DELTA: i32 = 45;
-const ASPIRATION_DELTA_LIMIT: i32 = 500;
-const QS_SEE: i32 = -100;
-
-const NMP_MIN_DEPTH: u8 = 2;
-const NMP_BASE_REDUCTION: u8 = 6;
-const NMP_DIVISOR: u8 = 5;
-
-const RFP_DEPTH: u8 = 8;
-const RFP_IMPROVING: i32 = 35;
-const RFP_MARGIN: i32 = 75;
-pub const LMR_DIV: f64 = 1.8;
-pub const LMR_BASE: f64 = 0.88;
-
-const RAZOR_DEPTH: u8 = 4;
-const RAZOR_MARGIN: i32 = 450;
-const HP_DEPTH: u8 = 2;
-const HP_THRESHOLD: i32 = -3550;
-
 pub const HISTORY_MAX_BONUS: i16 = 1700;
 pub const HISTORY_FACTOR: i16 = 353;
 pub const HISTORY_OFFSET: i16 = 343;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
+pub const LMR_DIV: f64 = 1.8;
+pub const LMR_BASE: f64 = 0.88;
 
 pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
     data.start_search();
@@ -63,7 +45,7 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
 }
 
 fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut SearchData) -> i32 {
-    let mut delta = ASPIRATION_DELTA;
+    let mut delta = data.params.aspiration_delta;
     let mut alpha = estimate - delta;
     let mut beta = estimate + delta;
     let mut depth = max_depth;
@@ -88,7 +70,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
         }
 
         delta += delta / 2;
-        if delta > ASPIRATION_DELTA_LIMIT {
+        if delta > data.params.aspiration_delta_limit {
             alpha = -INF;
             beta = INF;
         }
@@ -131,7 +113,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         if best_eval > -MATE
             && m.get_type().is_capture()
             && !board.in_check()
-            && !board.see(m, QS_SEE)
+            && !board.see(m, data.params.qs_see)
         {
             break;
         }
@@ -208,14 +190,14 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
         let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
-        let rfp_margin = RFP_MARGIN * depth as i32 - RFP_IMPROVING * improving as i32;
+        let rfp_margin = data.params.rfp_margin * depth as i32 - data.params.rfp_improving * improving as i32;
 
-        if depth <= RFP_DEPTH && static_eval - rfp_margin >= beta {
+        if depth <= data.params.rfp_depth && static_eval - rfp_margin >= beta {
             return static_eval;
         }
 
         // Razoring
-        if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
+        if depth < data.params.razor_depth && static_eval + data.params.razor_margin * (depth as i32) < alpha {
             let qeval = quiescence(board, alpha, beta, data);
             if qeval < alpha {
                 return qeval;
@@ -223,10 +205,10 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         // Null Move Pruning
-        if depth >= NMP_MIN_DEPTH && !board.is_king_pawn() {
+        if depth >= data.params.nmp_min_depth && !board.is_king_pawn() {
             let mut null_board = *board;
             null_board.make_null_move();
-            let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
+            let r = (data.params.nmp_base_reduction + depth / data.params.nmp_divisor).min(depth);
             let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, data);
             if null_score >= beta {
                 return null_score;
@@ -254,7 +236,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
             // History pruning
-            if depth <= HP_DEPTH && ms < HP_THRESHOLD {
+            if depth <= data.params.hp_depth && ms < data.params.hp_threshold {
                 break;
             }
         }

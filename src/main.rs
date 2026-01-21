@@ -9,6 +9,7 @@ mod network;
 mod perft;
 mod piece;
 mod search;
+mod search_params;
 mod square;
 mod tables;
 mod uci;
