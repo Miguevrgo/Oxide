@@ -246,10 +246,11 @@ const MASKS: [[SMasks; 4]; 64] = {
     table
 };
 
-const fn prng_lcg(state: u64) -> u64 {
-    state
-        .wrapping_mul(6364136223846793005)
-        .wrapping_add(1442695040888963407)
+const fn xorshift64star(mut s: u64) -> u64 {
+    s ^= s >> 12;
+    s ^= s << 25;
+    s ^= s >> 27;
+    s.wrapping_mul(0x2545F4914F6CDD1D)
 }
 
 const SEED: u64 = 2361912;
@@ -260,7 +261,7 @@ pub const PIECE_KEYS: [[u64; 64]; 12] = {
 
     let mut i = 0;
     while i < 50 {
-        s = prng_lcg(s);
+        s = xorshift64star(s);
         i += 1;
     }
 
@@ -268,7 +269,7 @@ pub const PIECE_KEYS: [[u64; 64]; 12] = {
     while p < 12 {
         let mut sq = 0;
         while sq < 64 {
-            s = prng_lcg(s);
+            s = xorshift64star(s);
             table[p][sq] = s;
             sq += 1;
         }
@@ -279,10 +280,10 @@ pub const PIECE_KEYS: [[u64; 64]; 12] = {
 
 pub const EP_KEYS: [u64; 64] = {
     let mut table = [0; 64];
-    let mut s = prng_lcg(SEED ^ 0x9E3779B97F4A7C15);
+    let mut s = xorshift64star(SEED ^ 0x9E3779B97F4A7C15);
     let mut i = 0;
     while i < 64 {
-        s = prng_lcg(s);
+        s = xorshift64star(s);
         table[i] = s;
         i += 1;
     }
@@ -291,10 +292,10 @@ pub const EP_KEYS: [u64; 64] = {
 
 pub const CASTLE_KEYS: [u64; 16] = {
     let mut table = [0; 16];
-    let mut s = prng_lcg(SEED ^ 0xBF58476D1CE4E5B9);
+    let mut s = xorshift64star(SEED ^ 0xBF58476D1CE4E5B9);
     let mut i = 0;
     while i < 16 {
-        s = prng_lcg(s);
+        s = xorshift64star(s);
         table[i] = s;
         i += 1;
     }
@@ -302,6 +303,6 @@ pub const CASTLE_KEYS: [u64; 16] = {
 };
 
 pub const SIDE_KEY: u64 = {
-    let s = prng_lcg(SEED ^ 0x55AA55AA55AA55AA);
-    prng_lcg(s)
+    let s = xorshift64star(SEED ^ 0x55AA55AA55AA55AA);
+    xorshift64star(s)
 };
