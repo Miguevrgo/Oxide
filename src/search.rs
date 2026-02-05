@@ -87,7 +87,7 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
             return score;
         }
 
-        delta += delta / 2;
+        delta += 2 * delta / 5;
         if delta > ASPIRATION_DELTA_LIMIT {
             alpha = -INF;
             beta = INF;
