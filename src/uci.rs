@@ -197,28 +197,26 @@ impl UCIEngine {
     fn parse_move(&self, board: &Board, move_str: &str) -> Move {
         let src = Square::from(&move_str[0..2]);
         let dest = Square::from(&move_str[2..4]);
-        let promotion = move_str.get(4..5);
+        let promo = move_str.get(4..5);
 
-        let moves = board.generate_pseudo_moves::<true, true>();
-        for m in moves {
-            if m.get_source() == src && m.get_dest() == dest {
-                if let Some(promo_char) = promotion {
-                    let promo_piece = match promo_char {
-                        "q" => MoveKind::QueenPromotion,
-                        "r" => MoveKind::RookPromotion,
-                        "b" => MoveKind::BishopPromotion,
-                        "n" => MoveKind::KnightPromotion,
-                        _ => continue,
-                    };
-                    if m.get_type() == promo_piece || m.get_type() == promo_piece.with_capture() {
-                        return m;
-                    }
-                } else if !m.get_type().is_promotion() {
-                    return m;
+        board
+            .generate_pseudo_moves::<true, true>()
+            .into_iter()
+            .find(|&m| {
+                if m.get_source() != src || m.get_dest() != dest {
+                    return false;
                 }
-            }
-        }
-        Move::default() // Fallback
+
+                match (promo, m.get_type()) {
+                    (None, t) => !t.is_promotion(),
+                    (Some("q"), MoveKind::QueenPromotion | MoveKind::QueenCapPromo) => true,
+                    (Some("r"), MoveKind::RookPromotion | MoveKind::RookCapPromo) => true,
+                    (Some("b"), MoveKind::BishopPromotion | MoveKind::BishopCapPromo) => true,
+                    (Some("n"), MoveKind::KnightPromotion | MoveKind::KnightCapPromo) => true,
+                    _ => false,
+                }
+            })
+            .expect("UCI Error: Invalid move received")
     }
 
     fn run_perft(&mut self, args: &[&str]) {
@@ -254,18 +252,6 @@ impl UCIEngine {
         println!("\x1b[1;33mResults for bench:");
         println!("{time:.2} seconds");
         println!("{} nodes {} nps", nodes, (nodes as f64 / time) as u64);
-    }
-}
-
-impl MoveKind {
-    fn with_capture(self) -> Self {
-        match self {
-            MoveKind::KnightPromotion => MoveKind::KnightCapPromo,
-            MoveKind::BishopPromotion => MoveKind::BishopCapPromo,
-            MoveKind::RookPromotion => MoveKind::RookCapPromo,
-            MoveKind::QueenPromotion => MoveKind::QueenCapPromo,
-            _ => self,
-        }
     }
 }
 
