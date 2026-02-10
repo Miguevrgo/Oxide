@@ -1,58 +1,76 @@
 <div align="center">
-  <img src="oxide_logo.png" alt="logo" width="200"/>
-</div>
+  <img src="oxide_logo.png" alt="Oxide Chess Engine" width="200"/>
 
-# <div align="center"> Oxide </div>
+  # Oxide
 
-<div align="center">
+  A UCI chess engine written in Rust.
 
   [![License][license-badge]][license-link]
   [![lichess-badge]][lichess-link]
-  
+
 </div>
 
-## Overview
+---
 
-`Oxide` started as a simple terminal-based chess project in my personal repository [Projects](https://github.com/Miguevrgo/Projects), but it evolved into something much bigger. A professor proposed it as a challenge, and I took it seriously, transforming it from a basic command-line game into a competitive UCI chess engine. The goal? To learn, to enjoy coding something complex without a GUI, and to build a clean, efficient, and readable piece of software.
+## 🔎 About
 
-This engine is designed to be both a learning experience and a playground for exploring chess programming. It leverages bitboards for board representation, implements move generation with obstruction difference techniques, and aims to balance simplicity with performance. Whether you're a chess enthusiast or a Rust programmer, I hope you find something interesting here!
+**Oxide** is a UCI-compliant chess engine built from scratch in Rust, focused on clean code and simplicity. It uses bitboard representation, obstruction difference move generation for sliding pieces, and NNUE evaluation with a network trained on [Leela Chess Zero](https://lczero.org/) data using the [bullet](https://github.com/jw1912/bullet) trainer.
 
-## Features
+The engine runs a single-threaded alpha-beta search with various enhancements, and is playable on [Lichess](https://lichess.org/@/OxideEngine) or through any UCI-compatible GUI such as [CuteChess](https://cutechess.com/).
 
-- **Complete Chess Implementation:** Fully functional chess rules, including castling, en passant, promotions, and check/checkmate detection.
-- **Bitboards:** Efficient board representation using bitboards for fast move generation and evaluation.
-- **Obstruction Difference:** Move generation optimized with obstruction difference for sliding pieces.
-- **UCI Compliance:** Generally compatible with UCI (Universal Chess Interface), making it playable in tools like CuteChess, Lichess (via bots), or any UCI-supporting GUI.
-- **Alpha-Beta Pruning:** Search algorithm with alpha-beta pruning with search enhancements, single-threaded for more comprehensive read.
-- **Simplicity & Readability:** Codebase designed to be as straightforward as possible while maintaining decent performance.
-- **Inspiration:** Built with insights from the [Chess Programming Wiki](https://www.chessprogramming.org/), top engines like [Carp](https://github.com/dede1751/carp),[Berserk](https://github.com/jhonnold/berserk) and [Akimbo](https://github.com/jw1912/akimbo), which was heavily consulted for the network implementation, The Oxide net provided with the release is trained using [linrock](https://huggingface.co/datasets/linrock/test80-2024/tree/main) datasets and [bullet](https://github.com/jw1912/bullet) trainer.
-
-## Objectives & Planned Improvements
-
-`Oxide` is now a decent engine, however there is still room for improvement:
-
-- **Enhance Search:** Using tables such as continuation history. Testing some prunings for the negamax move loop.
-- **NNUE**: I would like testing and learning other configurations.
-
-## Getting Started
+## 🏗️ Building from Source
 
 ### Prerequisites
-- Rust (stable, install via [rustup](https://rustup.rs/)).
-- (If you want a GUI) An UCI compliant (e.g., [CuteChess](https://cutechess.com/)).
 
-### Build & Run
-   ```bash
-   git clone https://github.com/Miguevrgo/Oxide.git
-   cd Oxide
-   RUSTFLAGS="-C target-cpu=native" cargo build --release
-   ./target/release/oxide
-```
-If you want to perform a perft test or benchmark just run:
+- [Rust](https://rustup.rs/) (stable toolchain)
+
+### Compile
+
 ```bash
-  RUSTFLAGS="-C target-cpu=native" cargo test --release -- --nocapture
+git clone https://github.com/Miguevrgo/Oxide.git
+cd Oxide
+RUSTFLAGS="-C target-cpu=native" cargo build --release
 ```
-If you prefer a given position test, you can use the UCI interface
 
+The binary will be at `./target/release/oxide`.
+
+### Run
+
+Start the engine in UCI mode:
+
+```bash
+./target/release/oxide
+```
+
+### Bench
+
+Run a fixed-depth search over 50 positions to measure nodes/second:
+
+```bash
+./target/release/oxide bench
+```
+
+### Perft Test Suite
+
+Run the full perft correctness suite (20 positions with known node counts):
+
+```bash
+RUSTFLAGS="-C target-cpu=native" cargo test --release -- --nocapture
+```
+
+You can also run perft interactively through UCI by typing `perft <depth>` after launching the engine.
+
+## 📦 Releases
+
+Pre-built binaries are available on the [Releases](https://github.com/Miguevrgo/Oxide/releases) page for different CPU targets. If you're unsure which to pick, download the one matching your architecture — or build from source with `target-cpu=native` for best performance on your machine.
+
+## 🙏 Acknowledgements
+
+Oxide draws heavily from the [Chess Programming Wiki](https://www.chessprogramming.org/) and from studying other engines, in particular:
+
+- [Akimbo](https://github.com/jw1912/akimbo) — especially for the NNUE implementation
+- [Carp](https://github.com/dede1751/carp)
+- [Berserk](https://github.com/jhonnold/berserk)
 
 [license-badge]:https://img.shields.io/github/license/miguevrgo/Oxide?style=for-the-badge&label=license&color=success
 [license-link]:https://github.com/Miguevrgo/Oxide/blob/main/LICENSE
