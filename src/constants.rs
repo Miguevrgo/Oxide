@@ -119,10 +119,10 @@ pub const CASTLE: [[Square; 2]; 2] = [
     [Square::new(58), Square::new(62)], // c8 f8
 ];
 
-const FILE_A: u64 = 0x0101010101010101;
+pub const FILE_A: u64 = 0x0101010101010101;
 const FILE_B: u64 = FILE_A << 1;
 const FILE_G: u64 = FILE_A << 6;
-const FILE_H: u64 = FILE_A << 7;
+pub const FILE_H: u64 = FILE_A << 7;
 
 pub const PAWN_ATTACKS: [[BitBoard; 64]; 2] = {
     let mut attacks = [[BitBoard(0); 64]; 2];

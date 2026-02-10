@@ -1,4 +1,4 @@
-use crate::constants::queen_attacks;
+use crate::constants::{queen_attacks, FILE_A, FILE_H};
 use crate::network::{EvalTable, Network};
 use crate::{
     bitboard::BitBoard,
@@ -189,10 +189,13 @@ impl Board {
         let occ = (self.sides[0] | self.sides[1]) ^ self.king_square(self.side as usize).to_board();
 
         // Pawn attacks
-        let mut pawns = self.pieces[Piece::WP.index()] & self.sides[attacker];
-        while pawns != BitBoard::EMPTY {
-            let sq = pawns.pop_lsb();
-            self.threats |= PAWN_ATTACKS[attacker][sq.index()];
+        let pawns = self.pieces[Piece::WP.index()] & self.sides[attacker];
+        if attacker == 0 {
+            self.threats.0 |= (pawns.0 & !FILE_A) << 7;
+            self.threats.0 |= (pawns.0 & !FILE_H) << 9;
+        } else {
+            self.threats.0 |= (pawns.0 & !FILE_H) >> 7;
+            self.threats.0 |= (pawns.0 & !FILE_A) >> 9;
         }
 
         // Rooks and queens (Orthogonal)
