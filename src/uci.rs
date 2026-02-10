@@ -166,8 +166,8 @@ impl UCIEngine {
             Colour::Black => btime,
         };
         let time_incr = match self.board.side {
-            Colour::White => binc,
-            Colour::Black => winc,
+            Colour::White => winc,
+            Colour::Black => binc,
         };
 
         self.data.time_tp = if let Some(t) = time_left {
