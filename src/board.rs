@@ -1,3 +1,4 @@
+use crate::castle::CASTLE_MASK;
 use crate::constants::{queen_attacks, FILE_A, FILE_H};
 use crate::network::{EvalTable, Network};
 use crate::{
@@ -103,30 +104,11 @@ impl Board {
             self.halfmoves += 1;
         }
 
-        if src_piece.is_king() {
-            if src_piece.colour() == Colour::White {
-                let new_rights =
-                    CastlingRights(old_rights.0 & !(CastlingRights::WK | CastlingRights::WQ));
-                self.castling_rights = new_rights;
-                self.hash.swap_castle(old_rights, new_rights);
-            } else {
-                let new_rights =
-                    CastlingRights(old_rights.0 & !(CastlingRights::BK | CastlingRights::BQ));
-                self.castling_rights = new_rights;
-                self.hash.swap_castle(old_rights, new_rights);
-            }
-        } else if src_piece.is_rook() {
-            let new_rights = match (src_piece.colour(), src.index()) {
-                (Colour::White, 0) => CastlingRights(old_rights.0 & !CastlingRights::WQ), // a1
-                (Colour::White, 7) => CastlingRights(old_rights.0 & !CastlingRights::WK), // h1
-                (Colour::Black, 56) => CastlingRights(old_rights.0 & !CastlingRights::BQ), // a8
-                (Colour::Black, 63) => CastlingRights(old_rights.0 & !CastlingRights::BK), // h8
-                _ => old_rights,
-            };
-            if new_rights != old_rights {
-                self.castling_rights = new_rights;
-                self.hash.swap_castle(old_rights, new_rights);
-            }
+        let new_rights =
+            CastlingRights(old_rights.0 & CASTLE_MASK[src.index()] & CASTLE_MASK[dest.index()]);
+        if new_rights != old_rights {
+            self.castling_rights = new_rights;
+            self.hash.swap_castle(old_rights, new_rights);
         }
 
         match move_type {

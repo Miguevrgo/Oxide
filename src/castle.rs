@@ -46,3 +46,14 @@ impl CastlingRights {
         right
     }
 }
+
+pub const CASTLE_MASK: [u8; 64] = {
+    let mut m = [0xFF_u8; 64];
+    m[0] = !CastlingRights::WQ;
+    m[4] = !(CastlingRights::WK | CastlingRights::WQ);
+    m[7] = !CastlingRights::WK;
+    m[56] = !CastlingRights::BQ;
+    m[60] = !(CastlingRights::BK | CastlingRights::BQ);
+    m[63] = !CastlingRights::BK;
+    m
+};
