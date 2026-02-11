@@ -211,7 +211,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         let rfp_margin = RFP_MARGIN * depth as i32 - RFP_IMPROVING * improving as i32;
 
         if depth <= RFP_DEPTH && static_eval - rfp_margin >= beta {
-            return static_eval;
+            return (static_eval + beta) / 2;
         }
 
         // Razoring
