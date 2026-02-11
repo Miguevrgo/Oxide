@@ -135,7 +135,6 @@ impl UCIEngine {
 
     fn go(&mut self, args: &[&str]) {
         self.data.tt.inc_age();
-        self.data.cache = EvalTable::default();
         let mut depth: u8 = 64;
         let mut wtime: Option<usize> = None;
         let mut btime: Option<usize> = None;
