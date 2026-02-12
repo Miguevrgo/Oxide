@@ -383,7 +383,7 @@ impl Board {
     }
 
     pub fn in_check(&self) -> bool {
-        self.is_attacked_by(self.king_square(self.side as usize), !self.side)
+        self.checkers != BitBoard::EMPTY
     }
 
     pub fn make_null_move(&mut self) {
@@ -397,25 +397,6 @@ impl Board {
 
         self.calculate_threats();
         self.pinned_and_checkers();
-    }
-
-    /// Returns whether the given square is attacked by the given side or not,
-    /// it uses sliding for bishop-queen and pawn, Obstruction difference with Infuehr improvement
-    /// and precalculated bitboards for Knights and Kings
-    pub fn is_attacked_by(&self, square: Square, attacker: Colour) -> bool {
-        let idx = square.index();
-        let enemy_side = self.sides[attacker as usize];
-        let occ = self.sides[Colour::White as usize] | self.sides[Colour::Black as usize];
-
-        ((KNIGHT_ATTACKS[idx] & self.pieces[Piece::WN.index()])
-            | (KING_ATTACKS[idx] & self.pieces[Piece::WK.index()])
-            | (PAWN_ATTACKS[!attacker as usize][idx] & self.pieces[Piece::WP.index()])
-            | (rook_attacks(occ.0, idx)
-                & (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()]))
-            | (bishop_attacks(occ.0, idx)
-                & (self.pieces[Piece::WB.index()] | self.pieces[Piece::WQ.index()])))
-            & enemy_side
-            != BitBoard::EMPTY
     }
 
     pub fn is_king_pawn(&self) -> bool {
