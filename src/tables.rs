@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::moves::{Move, MoveList};
 use crate::piece::Colour;
 use crate::search::{
-    HISTORY_FACTOR, HISTORY_MAX_BONUS, HISTORY_OFFSET, INF, LMR_BASE, LMR_DIV, MATE, MAX_DEPTH,
+    hist_bonus_max, hist_bonus_mul, hist_bonus_offset, lmr_base, lmr_divisor, INF, MATE, MAX_DEPTH,
     MAX_HISTORY,
 };
 use std::time::Instant;
@@ -120,7 +120,7 @@ impl TranspositionTable {
 /// History Gravity bonus
 /// https://www.chessprogramming.org/History_Heuristic
 pub fn history_bonus(depth: u8) -> i16 {
-    HISTORY_MAX_BONUS.min(HISTORY_FACTOR * depth as i16 - HISTORY_OFFSET)
+    hist_bonus_max().min(hist_bonus_mul() * depth as i32 - hist_bonus_offset()) as i16
 }
 
 /// Taper history so it clamps to MAX
@@ -210,9 +210,12 @@ impl LmrTable {
 
         let mut table = [[0i16; MoveList::SIZE + 1]; (MAX_DEPTH + 1) as usize];
 
+        let base = f64::from(lmr_base()) / 100.0;
+        let div = f64::from(lmr_divisor()) / 100.0;
+
         for (d, &ld) in log_depth.iter().enumerate() {
             for (m, &lm) in log_move.iter().enumerate() {
-                table[d][m] = (LMR_BASE + ld / LMR_DIV * lm) as i16;
+                table[d][m] = (base + ld / div * lm) as i16;
             }
         }
 

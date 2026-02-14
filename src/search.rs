@@ -1,6 +1,42 @@
 use crate::moves::MovePicker;
 use crate::tables::{history_bonus, Bound, SearchData};
-use crate::{board::Board, moves::Move};
+use crate::{board::Board, moves::Move, tunable_params};
+
+// Thanks to akimbo for this macro which saves me time for tuning <3
+tunable_params! {
+    nmp_base_reduction = 6, 1, 10, 1;
+    nmp_depth_divisor = 5, 1, 10, 1;
+    nmp_depth = 2, 1, 10, 1;
+
+    rfp_depth = 8, 1, 20, 1;
+    rfp_margin = 75, 1, 200, 5;
+
+    razor_depth = 4, 1, 20, 1;
+    razor_margin = 450, 1, 1000, 10;
+
+    lmr_base = 88, 0, 500, 1;
+    lmr_divisor = 180, 1, 500, 1;
+
+    hist_bonus_max = 1700, 100, 3000, 100;
+    hist_bonus_mul = 353, 10, 1000, 10;
+    hist_bonus_offset = 343, 0, 1000, 10;
+
+    hist_prune_depth = 2, 0, 10, 1;
+    aspiration_delta = 45, 20, 60, 1;
+    aspiration_delta_limit = 500, 200, 800, 50;
+    aspiration_depth = 5, 3, 8, 1;
+
+    aspiration_delta_num = 2, 1, 5, 1;
+    aspiration_delta_div = 5, 3, 8, 1;
+
+    qs_see = -100, -150, -50, 5;
+    rfp_improving = 35, 5, 70, 1;
+    hp_threshold = -3550, -4000, -2500, 25;
+
+    lmp_required_left = 6, 2, 8, 1;
+    lmp_required_right = 2, 0, 4, 1;
+    lmp_depth = 0, 0, 10, 1;
+}
 
 pub const INF: i32 = 2 << 16;
 pub const MATE: i32 = INF >> 2;
@@ -13,29 +49,6 @@ pub const PROM_SCORE: i32 = 80_000;
 pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
-// Search Parameters
-const ASPIRATION_DELTA: i32 = 45;
-const ASPIRATION_DELTA_LIMIT: i32 = 500;
-const QS_SEE: i32 = -100;
-
-const NMP_MIN_DEPTH: u8 = 2;
-const NMP_BASE_REDUCTION: u8 = 6;
-const NMP_DIVISOR: u8 = 5;
-
-const RFP_DEPTH: u8 = 8;
-const RFP_IMPROVING: i32 = 35;
-const RFP_MARGIN: i32 = 75;
-pub const LMR_DIV: f64 = 1.8;
-pub const LMR_BASE: f64 = 0.88;
-
-const RAZOR_DEPTH: u8 = 4;
-const RAZOR_MARGIN: i32 = 450;
-const HP_DEPTH: u8 = 2;
-const HP_THRESHOLD: i32 = -3550;
-
-pub const HISTORY_MAX_BONUS: i16 = 1700;
-pub const HISTORY_FACTOR: i16 = 353;
-pub const HISTORY_OFFSET: i16 = 343;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
@@ -43,7 +56,7 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
     data.start_search();
 
     while data.depth <= max_depth && !data.stop {
-        data.eval = if data.depth < 5 {
+        data.eval = if data.depth < aspiration_depth() as u8 {
             negamax(board, data.depth, -INF, INF, data)
         } else {
             aspiration_window(board, data.depth, data.eval, data)
@@ -63,7 +76,7 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
 }
 
 fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut SearchData) -> i32 {
-    let mut delta = ASPIRATION_DELTA;
+    let mut delta = aspiration_delta();
     let mut alpha = estimate - delta;
     let mut beta = estimate + delta;
     let mut depth = max_depth;
@@ -87,8 +100,8 @@ fn aspiration_window(board: &Board, max_depth: u8, estimate: i32, data: &mut Sea
             return score;
         }
 
-        delta += 2 * delta / 5;
-        if delta > ASPIRATION_DELTA_LIMIT {
+        delta += aspiration_delta_num() * delta / aspiration_delta_div();
+        if delta > aspiration_delta_limit() {
             alpha = -INF;
             beta = INF;
         }
@@ -131,7 +144,7 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
         if best_eval > -MATE
             && m.get_type().is_capture()
             && !board.in_check()
-            && !board.see(m, QS_SEE)
+            && !board.see(m, qs_see())
         {
             break;
         }
@@ -203,19 +216,19 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     }
 
     let can_prune = !pv_node && !in_check;
+    let static_eval = board.evaluate(&mut data.cache);
+    let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
     if can_prune {
         // Reverse Futility pruning
-        let static_eval = board.evaluate(&mut data.cache);
         data.ply_data[data.ply].eval = static_eval;
-        let improving = data.ply >= 2 && static_eval > data.ply_data[data.ply - 2].eval;
-        let rfp_margin = RFP_MARGIN * depth as i32 - RFP_IMPROVING * improving as i32;
+        let rfp_margin = rfp_margin() * depth as i32 - rfp_improving() * improving as i32;
 
-        if depth <= RFP_DEPTH && static_eval - rfp_margin >= beta {
+        if depth <= rfp_depth() as u8 && static_eval - rfp_margin >= beta {
             return (static_eval + beta) / 2;
         }
 
         // Razoring
-        if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
+        if depth < razor_depth() as u8 && static_eval + razor_margin() * (depth as i32) < alpha {
             let qeval = quiescence(board, alpha, beta, data);
             if qeval < alpha {
                 return qeval;
@@ -223,10 +236,11 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         // Null Move Pruning
-        if depth >= NMP_MIN_DEPTH && !board.is_king_pawn() {
+        if depth >= nmp_depth() as u8 && !board.is_king_pawn() {
             let mut null_board = *board;
             null_board.make_null_move();
-            let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
+            let r =
+                (nmp_base_reduction() + depth as i32 / nmp_depth_divisor()).min(depth as i32) as u8;
             let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, data);
             if null_score >= beta {
                 return null_score;
@@ -254,7 +268,14 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
     while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
             // History pruning
-            if depth <= HP_DEPTH && ms < HP_THRESHOLD {
+            if depth <= hist_prune_depth() as u8 && ms < hp_threshold() {
+                break;
+            }
+
+            // Late Move Pruning
+            let moves_required = (lmp_required_left() as u8 + depth * depth)
+                / (lmp_required_right() as u8 - (u8::from(improving)));
+            if depth <= lmp_depth() as u8 && move_idx as u8 > moves_required {
                 break;
             }
         }

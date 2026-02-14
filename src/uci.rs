@@ -1,6 +1,6 @@
 use crate::network::EvalTable;
 use crate::piece::Colour;
-use crate::search::{find_best_move, MAX_DEPTH};
+use crate::search::{find_best_move, print_params_ob, MAX_DEPTH};
 use crate::tables::SearchData;
 use std::env;
 use std::io::BufRead;
@@ -56,6 +56,7 @@ impl UCIEngine {
                 println!("id author {AUTHOR}");
                 println!("option name Hash type spin default 32 min 1 max 4096");
                 println!("option name Threads type spin default 1 min 1 max 1");
+                crate::search::list_params();
                 println!("uciok");
             }
             "ucinewgame" => {
@@ -90,13 +91,20 @@ impl UCIEngine {
                                 }
                             }
                         }
-                        _ => {}
+                        _ => {
+                            if parts[3] == "value" {
+                                if let Ok(v) = parts[4].parse() {
+                                    crate::search::set_param(parts[2], v);
+                                }
+                            }
+                        }
                     }
                 }
             }
             "eval" => {
                 println!("eval: {}cp", self.board.evaluate(&mut EvalTable::default()));
             }
+            "params" => print_params_ob(),
             "bench" => self.bench(),
             "quit" => {
                 std::process::exit(0);
