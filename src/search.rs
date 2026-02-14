@@ -34,7 +34,7 @@ tunable_params! {
     hp_threshold = -3550, -4000, -2500, 25;
 
     lmp_required_left = 6, 2, 8, 1;
-    lmp_required_right = 2, 1, 4, 1;
+    lmp_required_right = 2, 2, 4, 1;
     lmp_depth = 0, 0, 10, 1;
 }
 
