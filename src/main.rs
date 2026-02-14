@@ -12,6 +12,7 @@ mod search;
 mod square;
 mod tables;
 mod uci;
+mod util;
 mod zobrist;
 
 fn main() {
