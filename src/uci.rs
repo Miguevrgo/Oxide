@@ -95,6 +95,9 @@ impl UCIEngine {
                             if parts[3] == "value" {
                                 if let Ok(v) = parts[4].parse() {
                                     crate::search::set_param(parts[2], v);
+                                    if parts[2] == "lmr_base" || parts[2] == "lmr_divisor" {
+                                        self.data.lmr_table = crate::tables::LmrTable::new();
+                                    }
                                 }
                             }
                         }
