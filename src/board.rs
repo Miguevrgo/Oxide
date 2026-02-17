@@ -246,32 +246,28 @@ impl Board {
     /// Checks if the given castle is legal by checking castling_rights, checks, that there
     /// are no pieces in between and passing squares are not threatened.
     pub fn is_castle_legal(&self, dest: Square) -> bool {
-        let (rook_sq, king_pass, king_end, inter_squares, right_bit) = match (self.side, dest) {
+        let (rook_sq, king_pass, inter_squares, right_bit) = match (self.side, dest) {
             (Colour::White, d) if d == Square::from("g1") => (
                 Square::from("h1"),
                 Square::from("f1"),
-                Square::from("g1"),
                 BitBoard::WHITE_KING_CASTLE,
                 CastlingRights::WK,
             ),
             (Colour::White, d) if d == Square::from("c1") => (
                 Square::from("a1"),
                 Square::from("d1"),
-                Square::from("c1"),
                 BitBoard::WHITE_QUEEN_CASTLE,
                 CastlingRights::WQ,
             ),
             (Colour::Black, d) if d == Square::from("g8") => (
                 Square::from("h8"),
                 Square::from("f8"),
-                Square::from("g8"),
                 BitBoard::BLACK_KING_CASTLE,
                 CastlingRights::BK,
             ),
             (Colour::Black, d) if d == Square::from("c8") => (
                 Square::from("a8"),
                 Square::from("d8"),
-                Square::from("c8"),
                 BitBoard::BLACK_QUEEN_CASTLE,
                 CastlingRights::BQ,
             ),
@@ -285,7 +281,7 @@ impl Board {
             return false;
         }
         let safe = self.checkers == BitBoard::EMPTY
-            && (king_pass.to_board() | king_end.to_board()) & self.threats == BitBoard::EMPTY;
+            && (king_pass.to_board() | dest.to_board()) & self.threats == BitBoard::EMPTY;
         safe && self.pieces[Piece::WR.index()].0
             & self.sides[self.side as usize].0
             & (1 << rook_sq.index())
