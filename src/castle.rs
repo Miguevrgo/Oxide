@@ -19,28 +19,19 @@ impl CastlingRights {
     }
 
     pub fn from(rights: &str) -> Self {
-        let mut right = Self::NONE;
-
         if rights == "-" {
-            return right;
+            return Self::NONE;
         }
 
+        let mut right = Self::NONE;
         for token in rights.chars() {
-            match token {
-                'K' => {
-                    right.0 |= Self::WK;
-                }
-                'Q' => {
-                    right.0 |= Self::WQ;
-                }
-                'k' => {
-                    right.0 |= Self::BK;
-                }
-                'q' => {
-                    right.0 |= Self::BQ;
-                }
+            right.0 |= match token {
+                'K' => Self::WK,
+                'Q' => Self::WQ,
+                'k' => Self::BK,
+                'q' => Self::BQ,
                 _ => panic!("Invalid CastlingRights in FEN"),
-            }
+            };
         }
 
         right
