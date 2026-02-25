@@ -16,7 +16,7 @@ pub const KILL_SCORE: i32 = 70_000;
 // Search Parameters
 const ASPIRATION_DELTA: i32 = 45;
 const ASPIRATION_DELTA_LIMIT: i32 = 500;
-const QS_SEE: i32 = -100;
+const QS_SEE: i32 = -96;
 
 const NMP_MIN_DEPTH: u8 = 2;
 const NMP_BASE_REDUCTION: u8 = 6;
@@ -31,7 +31,7 @@ pub const LMR_BASE: f64 = 0.88;
 const RAZOR_DEPTH: u8 = 4;
 const RAZOR_MARGIN: i32 = 450;
 const HP_DEPTH: u8 = 2;
-const HP_THRESHOLD: i32 = -3550;
+const HP_THRESHOLD: i32 = -3564;
 
 pub const HISTORY_MAX_BONUS: i16 = 1700;
 pub const HISTORY_FACTOR: i16 = 353;
