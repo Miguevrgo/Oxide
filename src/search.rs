@@ -218,6 +218,9 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         if depth < RAZOR_DEPTH && static_eval + RAZOR_MARGIN * (depth as i32) < alpha {
             let qeval = quiescence(board, alpha, beta, data);
             if qeval < alpha {
+                if qeval > MATE - MAX_DEPTH as i32 {
+                    return beta;
+                }
                 return qeval;
             }
         }
@@ -229,6 +232,9 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             let r = (NMP_BASE_REDUCTION + depth / NMP_DIVISOR).min(depth);
             let null_score = -negamax(&null_board, depth - r, -beta, -beta + 1, data);
             if null_score >= beta {
+                if null_score > MATE - MAX_DEPTH as i32 {
+                    return beta;
+                }
                 return null_score;
             }
         }
