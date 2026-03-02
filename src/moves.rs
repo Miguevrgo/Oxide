@@ -297,10 +297,10 @@ impl Board {
             if let Some(dest) = self.en_passant {
                 let forward = colour.forward();
                 for delta in [(-1, -forward), (1, -forward)] {
-                    if let Some(src) = dest.jump_check(delta.0, delta.1) {
-                        if pawns.get_bit(src) {
-                            moves.push(Move::new(src, dest, MoveKind::EnPassant));
-                        }
+                    if let Some(src) = dest.jump_check(delta.0, delta.1)
+                        && pawns.get_bit(src)
+                    {
+                        moves.push(Move::new(src, dest, MoveKind::EnPassant));
                     }
                 }
             }

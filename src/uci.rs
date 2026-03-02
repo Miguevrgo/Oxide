@@ -1,6 +1,6 @@
 use crate::network::EvalTable;
 use crate::piece::Colour;
-use crate::search::{find_best_move, MAX_DEPTH};
+use crate::search::{MAX_DEPTH, find_best_move};
 use crate::tables::SearchData;
 use std::env;
 use std::io::BufRead;
@@ -77,17 +77,17 @@ impl UCIEngine {
                 if parts.len() >= 5 && parts[1] == "name" {
                     match parts[2] {
                         "Hash" if parts[3] == "value" => {
-                            if let Ok(mb) = parts[4].parse() {
-                                if mb > 0 {
-                                    self.data.resize_tt(mb);
-                                }
+                            if let Ok(mb) = parts[4].parse()
+                                && mb > 0
+                            {
+                                self.data.resize_tt(mb);
                             }
                         }
                         "Threads" if parts[3] == "value" => {
-                            if let Ok(n) = parts[4].parse::<u8>() {
-                                if n != 1 {
-                                    println!("Only one thread supported!")
-                                }
+                            if let Ok(n) = parts[4].parse::<u8>()
+                                && n != 1
+                            {
+                                println!("Only one thread supported!")
                             }
                         }
                         _ => {}
