@@ -108,11 +108,10 @@ fn quiescence(board: &Board, mut alpha: i32, beta: i32, data: &mut SearchData) -
     }
 
     let mut best_eval = board.evaluate(&mut data.cache);
-    if best_eval >= beta {
+    alpha = alpha.max(best_eval);
+    if alpha >= beta {
         return best_eval;
     }
-
-    alpha = alpha.max(best_eval);
 
     let mut picker = MovePicker::new::<false>(board);
     picker.score_caps(board, data);
