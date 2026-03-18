@@ -190,8 +190,12 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     let pv_node = beta > alpha + 1;
     let mut tt_move = None;
+    let mut tt_value = None;
+    let mut tt_depth_val = 0u8;
     if let Some(entry) = data.tt.probe(key) {
         tt_move = Some(entry.best_move);
+        tt_value = Some(entry.value);
+        tt_depth_val = entry.depth();
         if entry.depth() >= depth && !pv_node {
             match entry.bound() {
                 Bound::Exact => return entry.value,
@@ -278,6 +282,14 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
             reduction -= i16::from(new_board.in_check());
             if ms <= MAX_HISTORY {
                 reduction -= (ms / MAX_HISTORY) as i16;
+            }
+            if let Some(tt_val) = tt_value {
+                if tt_val < alpha {
+                    reduction += 6;
+                }
+                if tt_depth_val < depth {
+                    reduction += 3;
+                }
             }
             reduction = reduction.clamp(0, depth as i16 - 1);
         }
