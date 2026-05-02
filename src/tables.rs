@@ -339,11 +339,7 @@ impl SearchData {
 impl std::fmt::Display for SearchData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let time = self.timing.elapsed().as_millis();
-        let nps = if time > 0 {
-            (1000 * self.nodes as u128 / time) as u64
-        } else {
-            0
-        };
+        let nps = (1000 * self.nodes as u128).checked_div(time).unwrap_or(0) as u64;
 
         if self.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
             let mate_in = (MATE - self.eval.abs()) / 2;
