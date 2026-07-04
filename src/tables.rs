@@ -342,7 +342,7 @@ impl std::fmt::Display for SearchData {
         let nps = (1000 * self.nodes as u128).checked_div(time).unwrap_or(0) as u64;
 
         if self.eval.abs() >= MATE - i32::from(MAX_DEPTH) {
-            let mate_in = (MATE - self.eval.abs()) / 2;
+            let mate_in = (MATE - self.eval.abs() + 1) / 2;
             let sign = if self.eval < 0 { "-" } else { "" };
             write!(
                 f,
