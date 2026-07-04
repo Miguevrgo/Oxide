@@ -589,8 +589,12 @@ impl Board {
         let idx = dest.index();
         let mut attackers = ((KNIGHT_ATTACKS[idx] & self.pieces[Piece::WN.index()])
             | (KING_ATTACKS[idx] & self.pieces[Piece::WK.index()])
-            | (PAWN_ATTACKS[Colour::White as usize][idx] & self.pieces[Piece::WP.index()])
-            | (PAWN_ATTACKS[Colour::Black as usize][idx] & self.pieces[Piece::WP.index()])
+            | (PAWN_ATTACKS[Colour::White as usize][idx]
+                & self.pieces[Piece::WP.index()]
+                & self.sides[Colour::Black as usize])
+            | (PAWN_ATTACKS[Colour::Black as usize][idx]
+                & self.pieces[Piece::WP.index()]
+                & self.sides[Colour::White as usize])
             | (rook_attacks(occ.0, idx)
                 & (self.pieces[Piece::WR.index()] | self.pieces[Piece::WQ.index()]))
             | (bishop_attacks(occ.0, idx)
