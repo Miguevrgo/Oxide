@@ -223,7 +223,7 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         }
 
         // Null Move Pruning
-        let nmp_margin = 9 * depth as i32 - 266 + (improving as i32 >> 3);
+        let nmp_margin = 9 * depth as i32 - 266;
         if depth >= NMP_MIN_DEPTH && !board.is_king_pawn() && static_eval >= beta + nmp_margin {
             let mut null_board = *board;
             null_board.make_null_move();
