@@ -254,6 +254,16 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
 
     while let Some((m, ms)) = picker.next() {
         if can_prune && best_score.abs() < MATE {
+            // SEE Pruning
+            if !m.get_type().is_capture() && depth <= 4 {
+                if !board.see(m, -50 * depth as i32) {
+                    continue;
+                }
+            } else if m.get_type().is_capture() && depth <= 5 && !board.see(m, -100 * depth as i32)
+            {
+                continue;
+            }
+
             // History pruning
             if depth <= HP_DEPTH && ms < HP_THRESHOLD {
                 break;
