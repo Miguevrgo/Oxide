@@ -169,8 +169,8 @@ impl UCIEngine {
             Colour::Black => binc,
         };
 
-        self.data.time_tp = if let Some(t) = time_left {
-            (if let Some(inc) = time_incr {
+        let max_alloc = if let Some(t) = time_left {
+            if let Some(inc) = time_incr {
                 (t / 20 + 4 * inc / 5) as u128
             } else {
                 (t as f64 / moves_left.unwrap_or(30.0)
@@ -180,14 +180,16 @@ impl UCIEngine {
                         31..=50 => 1.35,
                         _ => 1.0,
                     }) as u128
-            })
-            .min((t as f64 * 0.95) as u128)
+            }
         } else if let Some(time_tm) = movetime {
             time_tm
         } else {
             MAX_TIME
         }
         .min(MAX_TIME);
+
+        self.data.time_tp = max_alloc;
+        self.data.opt_time = (max_alloc * 6) / 10;
 
         find_best_move(&self.board, depth, &mut self.data);
         println!("bestmove {}", self.data.best_move);
@@ -238,6 +240,7 @@ impl UCIEngine {
         for fen in BENCH_POSITIONS {
             self.board = Board::from_fen(fen);
             self.data.time_tp = MAX_TIME;
+            self.data.opt_time = MAX_TIME;
             println!("------------------------------------------------------------");
             println!("Current FEN: {fen}");
             println!("------------------------------------------------------------");
