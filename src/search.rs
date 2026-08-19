@@ -51,7 +51,7 @@ pub fn find_best_move(board: &Board, max_depth: u8, data: &mut SearchData) {
 
         if data.stop {
             break;
-        } else if data.timing.elapsed().as_millis() * 5 / 4 > data.time_tp
+        } else if data.timing.elapsed().as_millis() >= data.opt_time
             || data.eval.abs() >= MATE - i32::from(MAX_DEPTH)
         {
             data.stop = true;

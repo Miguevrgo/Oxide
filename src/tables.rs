@@ -237,6 +237,7 @@ pub struct SearchData {
     // Search Control
     pub timing: Instant,
     pub time_tp: u128,
+    pub opt_time: u128,
     pub stop: bool,
     pub depth: u8,
 
@@ -261,6 +262,7 @@ impl SearchData {
         Self {
             timing: Instant::now(),
             time_tp: 0,
+            opt_time: 0,
             stop: false,
             depth: 0,
 
