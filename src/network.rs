@@ -236,10 +236,7 @@ pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const UNROLL: usize = 4;
     const NUM_ITERS: usize = HL_SIZE / (CHUNK * UNROLL);
 
-    let mut sum0 = _mm512_setzero_si512();
-    let mut sum1 = _mm512_setzero_si512();
-    let mut sum2 = _mm512_setzero_si512();
-    let mut sum3 = _mm512_setzero_si512();
+    let mut sums = [_mm512_setzero_si512(); UNROLL];
 
     let min = _mm512_setzero_si512();
     let max = _mm512_set1_epi16(QA as i16);
@@ -248,36 +245,19 @@ pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     let w_ptr = weights.vals.as_ptr();
 
     for i in 0..NUM_ITERS {
-        let offset = i * CHUNK * UNROLL;
-
-        let mut v0 = _mm512_load_si512(acc_ptr.add(offset).cast());
-        v0 = _mm512_min_epi16(_mm512_max_epi16(v0, min), max);
-        let w0 = _mm512_load_si512(w_ptr.add(offset).cast());
-        let prod0 = _mm512_mullo_epi16(v0, w0);
-        sum0 = _mm512_dpwssd_epi32(sum0, v0, prod0);
-
-        let mut v1 = _mm512_load_si512(acc_ptr.add(offset + 32).cast());
-        v1 = _mm512_min_epi16(_mm512_max_epi16(v1, min), max);
-        let w1 = _mm512_load_si512(w_ptr.add(offset + 32).cast());
-        let prod1 = _mm512_mullo_epi16(v1, w1);
-        sum1 = _mm512_dpwssd_epi32(sum1, v1, prod1);
-
-        let mut v2 = _mm512_load_si512(acc_ptr.add(offset + 64).cast());
-        v2 = _mm512_min_epi16(_mm512_max_epi16(v2, min), max);
-        let w2 = _mm512_load_si512(w_ptr.add(offset + 64).cast());
-        let prod2 = _mm512_mullo_epi16(v2, w2);
-        sum2 = _mm512_dpwssd_epi32(sum2, v2, prod2);
-
-        let mut v3 = _mm512_load_si512(acc_ptr.add(offset + 96).cast());
-        v3 = _mm512_min_epi16(_mm512_max_epi16(v3, min), max);
-        let w3 = _mm512_load_si512(w_ptr.add(offset + 96).cast());
-        let prod3 = _mm512_mullo_epi16(v3, w3);
-        sum3 = _mm512_dpwssd_epi32(sum3, v3, prod3);
+        for (u, sum) in sums.iter_mut().enumerate() {
+            let offset = i * CHUNK * UNROLL + u * CHUNK;
+            let v = _mm512_load_si512(acc_ptr.add(offset).cast());
+            let v = _mm512_min_epi16(_mm512_max_epi16(v, min), max);
+            let w = _mm512_load_si512(w_ptr.add(offset).cast());
+            *sum = _mm512_dpwssd_epi32(*sum, v, _mm512_mullo_epi16(v, w));
+        }
     }
 
-    let sum_a = _mm512_add_epi32(sum0, sum1);
-    let sum_b = _mm512_add_epi32(sum2, sum3);
-    let final_sum = _mm512_add_epi32(sum_a, sum_b);
+    let final_sum = _mm512_add_epi32(
+        _mm512_add_epi32(sums[0], sums[1]),
+        _mm512_add_epi32(sums[2], sums[3]),
+    );
 
     _mm512_reduce_add_epi32(final_sum)
 }
