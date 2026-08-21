@@ -165,7 +165,7 @@ impl Board {
 
     /// Updates the threats bitboard with the current squares under attack by any piece of the
     /// opposite board colour
-    pub fn calculate_threats(&mut self) {
+    fn calculate_threats(&mut self) {
         let attacker = !self.side as usize;
         self.threats = BitBoard::EMPTY;
         let occ = (self.sides[0] | self.sides[1]) ^ self.king_square(self.side as usize).to_board();
@@ -211,7 +211,7 @@ impl Board {
     /// Updates the pinned and checkers bitboards to include all of current board
     /// side pieces which are pinned and all enemy pieces which are currently providing
     /// a check
-    pub fn pinned_and_checkers(&mut self) {
+    fn pinned_and_checkers(&mut self) {
         self.pinned = BitBoard::EMPTY;
         let attacker = !self.side as usize;
         let king_sq = self.king_square(self.side as usize);
@@ -430,7 +430,7 @@ impl Board {
         false
     }
 
-    pub fn king_square(&self, colour: usize) -> Square {
+    fn king_square(&self, colour: usize) -> Square {
         let king_bb = self.pieces[Piece::WK.index()] & self.sides[colour];
         king_bb.lsb()
     }
@@ -524,7 +524,7 @@ impl Board {
         (adds, subs)
     }
 
-    pub fn scale(&self, eval: i32) -> i32 {
+    fn scale(&self, eval: i32) -> i32 {
         let mat = 700
             + (self.pieces[Piece::WN.index()].count_bits() as i32
                 * PIECE_VALUES[Piece::WN.index()]

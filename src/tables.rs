@@ -44,7 +44,7 @@ impl TTEntry {
     }
 
     #[inline]
-    pub fn make_flags(depth: u8, bound: Bound) -> u8 {
+    fn make_flags(depth: u8, bound: Bound) -> u8 {
         ((depth.min(63)) << 2) | (bound as u8 & 0b11)
     }
 }
@@ -55,7 +55,7 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
-    pub fn with_size_mb(mb: usize) -> Self {
+    fn with_size_mb(mb: usize) -> Self {
         let bytes = mb * 1_048_576;
         let entry_sz = std::mem::size_of::<TTEntry>();
         let len = (bytes / entry_sz).next_power_of_two();
@@ -213,7 +213,7 @@ impl LmrTable {
     }
 }
 
-pub const MAX_PLY: usize = 128;
+const MAX_PLY: usize = 128;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlyData {

@@ -37,7 +37,7 @@ const fn make_between_table() -> [[BitBoard; 64]; 64] {
     table
 }
 
-pub static BETWEEN: [[BitBoard; 64]; 64] = make_between_table();
+static BETWEEN: [[BitBoard; 64]; 64] = make_between_table();
 
 pub const fn between(sq1: Square, sq2: Square) -> BitBoard {
     BETWEEN[sq1.index()][sq2.index()]
@@ -70,7 +70,7 @@ const fn make_pinned_moves_table() -> [[BitBoard; 64]; 64] {
     table
 }
 
-pub static PINNED_MOVES: [[BitBoard; 64]; 64] = make_pinned_moves_table();
+static PINNED_MOVES: [[BitBoard; 64]; 64] = make_pinned_moves_table();
 
 pub const fn pinned_moves(king_sq: Square, pinned: Square) -> BitBoard {
     PINNED_MOVES[king_sq.index()][pinned.index()]

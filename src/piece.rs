@@ -39,7 +39,7 @@ const PIECE_CHAR: [char; 12] = [
 
 impl Piece {
     /// Array of all possible pieces
-    pub const ALL: [Self; 12] = [
+    const ALL: [Self; 12] = [
         Piece::WP,
         Piece::BP,
         Piece::WN,
@@ -147,7 +147,7 @@ impl Colour {
     }
 
     #[inline]
-    pub const fn from_u8(value: u8) -> Self {
+    const fn from_u8(value: u8) -> Self {
         // Safety: Value in [0,1]
         unsafe { std::mem::transmute(value & 1) }
     }

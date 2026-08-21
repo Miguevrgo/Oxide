@@ -143,7 +143,7 @@ impl Board {
         &self,
         src: Square,
         occ: u64,
-        attacks_fn: fn(u64, usize) -> BitBoard,
+        attacks_fn: impl Fn(u64, usize) -> BitBoard,
         moves: &mut MoveList,
     ) {
         let attacks = attacks_fn(occ, src.index());

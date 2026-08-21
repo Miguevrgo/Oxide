@@ -5,7 +5,7 @@ use std::arch::x86_64::*;
 // Side: White = 0, Black = 1
 // Network (768x8 -> 1536)x2 -> 1
 const INPUT_SIZE: usize = 768;
-pub const HL_SIZE: usize = 1536;
+const HL_SIZE: usize = 1536;
 
 // Quantization factors
 const QA: i32 = 255;
@@ -14,10 +14,10 @@ const QAB: i32 = QA * QB;
 
 // Scaling factor
 const SCALE: i32 = 400;
-pub const NUM_BUCKETS: usize = 8;
+const NUM_BUCKETS: usize = 8;
 
 #[rustfmt::skip]
-pub static BUCKETS: [usize; 64] = [
+static BUCKETS: [usize; 64] = [
     0, 1, 2, 3, 11, 10, 9, 8,
     4, 4, 5, 5, 13, 13, 12, 12,
     6, 6, 6, 6, 14, 14, 14, 14,
@@ -28,8 +28,7 @@ pub static BUCKETS: [usize; 64] = [
     7, 7, 7, 7, 15, 15, 15, 15,
 ];
 
-pub static NNUE: Network =
-    unsafe { std::mem::transmute(*include_bytes!("../resources/oxide-v5.bin")) };
+static NNUE: Network = unsafe { std::mem::transmute(*include_bytes!("../resources/oxide-v5.bin")) };
 
 #[repr(C)]
 pub struct Network {
@@ -190,7 +189,7 @@ impl Default for EvalTable {
 
 #[cfg(not(target_feature = "avx512vnni"))]
 #[inline]
-pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
+unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const CHUNK: usize = 16;
     const NUM_ITERS: usize = HL_SIZE / CHUNK;
 
@@ -231,7 +230,7 @@ unsafe fn horizontal_sum_i32(sum: __m256i) -> i32 {
 
 #[cfg(target_feature = "avx512vnni")]
 #[inline]
-pub unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
+unsafe fn flatten(acc: &Accumulator, weights: &Accumulator) -> i32 {
     const CHUNK: usize = 32;
     const UNROLL: usize = 4;
     const NUM_ITERS: usize = HL_SIZE / (CHUNK * UNROLL);

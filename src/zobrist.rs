@@ -48,7 +48,7 @@ impl ZHash {
         self.0 ^= CASTLE_KEYS[new_rights.index()]
     }
 
-    pub fn hash_castle(&mut self, castle: CastlingRights) {
+    fn hash_castle(&mut self, castle: CastlingRights) {
         self.0 ^= CASTLE_KEYS[castle.index()]
     }
 
