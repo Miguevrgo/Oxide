@@ -200,25 +200,14 @@ pub struct LmrTable {
 
 impl LmrTable {
     pub fn new() -> Self {
-        let log_depth: Vec<f64> = (0..=MAX_DEPTH)
-            .map(|d| if d > 0 { (d as f64).ln() } else { 0.0 })
-            .collect();
-
-        let log_move: Vec<f64> = (0..=MoveList::SIZE)
-            .map(|m| if m > 0 { (m as f64).ln() } else { 0.0 })
-            .collect();
-
+        let ln = |x: usize| if x > 0 { (x as f64).ln() } else { 0.0 };
         let mut table = [[0i16; MoveList::SIZE + 1]; (MAX_DEPTH + 1) as usize];
 
-        for (d, &ld) in log_depth.iter().enumerate() {
-            for (m, &lm) in log_move.iter().enumerate() {
-                table[d][m] = (LMR_BASE + ld / LMR_DIV * lm) as i16;
+        for (d, row) in table.iter_mut().enumerate() {
+            for (m, entry) in row.iter_mut().enumerate() {
+                *entry = (LMR_BASE + ln(d) / LMR_DIV * ln(m)) as i16;
             }
         }
-
-        table[0][0] = 0;
-        table[1][0] = 0;
-        table[0][1] = 0;
 
         Self { base: table }
     }
