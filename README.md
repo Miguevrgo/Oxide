@@ -1,7 +1,7 @@
 <div align="center">
   <img src="oxide_logo.png" alt="Oxide Chess Engine" width="200"/>
 
-  # Oxide
+# Oxide
 
   A UCI chess engine written in Rust.
 
