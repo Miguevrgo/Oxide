@@ -14,28 +14,30 @@ pub const CAP_SCORE: i32 = 90_000;
 pub const KILL_SCORE: i32 = 70_000;
 
 // Search Parameters
-const ASPIRATION_DELTA: i32 = 45;
-const ASPIRATION_DELTA_LIMIT: i32 = 500;
-const QS_SEE: i32 = -100;
+const ASPIRATION_DELTA: i32 = 36;
+const ASPIRATION_DELTA_LIMIT: i32 = 498;
+const QS_SEE: i32 = -89;
+const SEE_THRESHOLD: i32 = -59;
+const SEE_CAP_THRESHOLD: i32 = -94;
 
 const NMP_MIN_DEPTH: u8 = 2;
-const NMP_BASE_REDUCTION: u8 = 6;
+const NMP_BASE_REDUCTION: u8 = 5;
 const NMP_DIVISOR: u8 = 5;
 
 const RFP_DEPTH: u8 = 8;
-const RFP_IMPROVING: i32 = 35;
-const RFP_MARGIN: i32 = 75;
-pub const LMR_DIV: f64 = 1.8;
-pub const LMR_BASE: f64 = 0.88;
+const RFP_IMPROVING: i32 = 38;
+const RFP_MARGIN: i32 = 74;
+pub const LMR_DIV: f64 = 1.68;
+pub const LMR_BASE: f64 = 0.87;
 
-const RAZOR_DEPTH: u8 = 4;
-const RAZOR_MARGIN: i32 = 450;
+const RAZOR_DEPTH: u8 = 6;
+const RAZOR_MARGIN: i32 = 444;
 const HP_DEPTH: u8 = 2;
-const HP_THRESHOLD: i32 = -3550;
+const HP_THRESHOLD: i32 = -3793;
 
-pub const HISTORY_MAX_BONUS: i16 = 1700;
-pub const HISTORY_FACTOR: i16 = 353;
-pub const HISTORY_OFFSET: i16 = 343;
+pub const HISTORY_MAX_BONUS: i16 = 1694;
+pub const HISTORY_FACTOR: i16 = 369;
+pub const HISTORY_OFFSET: i16 = 351;
 pub const MAX_CAP_HISTORY: i32 = 16384;
 pub const MAX_HISTORY: i32 = 8192;
 
@@ -256,10 +258,12 @@ fn negamax(board: &Board, mut depth: u8, mut alpha: i32, beta: i32, data: &mut S
         if can_prune && best_score.abs() < MATE {
             // SEE Pruning
             if !m.get_type().is_capture() && depth <= 4 {
-                if !board.see(m, -50 * depth as i32) {
+                if !board.see(m, SEE_THRESHOLD * depth as i32) {
                     continue;
                 }
-            } else if m.get_type().is_capture() && depth <= 5 && !board.see(m, -100 * depth as i32)
+            } else if m.get_type().is_capture()
+                && depth <= 5
+                && !board.see(m, SEE_CAP_THRESHOLD * depth as i32)
             {
                 continue;
             }
