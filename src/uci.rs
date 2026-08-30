@@ -189,7 +189,7 @@ impl UCIEngine {
         .min(MAX_TIME);
 
         self.data.time_tp = max_alloc;
-        self.data.opt_time = (max_alloc * 6) / 10;
+        self.data.opt_time = (max_alloc * 49) / 100;
 
         find_best_move(&self.board, depth, &mut self.data);
         println!("bestmove {}", self.data.best_move);
